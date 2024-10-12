@@ -1,0 +1,28 @@
+[package]
+name = "esim-mailer"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+aes-gcm = "0.10.3"
+base64 = "0.22.1"
+clap = { version = "4.0", features = ["derive"] }
+lettre = "0.11.9"
+oauth2 = "4.4.2"
+rand = "0.8.5"
+rfd = "0.15.0"
+serde = "1.0.210"
+serde_json = "1.0.128"
+sha2 = "0.10.8"
+url = "2.5.2"
+webbrowser = "1.0.2"
+
+[[bin]]
+name = "esim-mailer"
+path = "src/bin/main.rs"
+
+[build-dependencies]
+aes-gcm = "0.10.3"
+dotenv = "0.15.0"
+rand = "0.8.5"

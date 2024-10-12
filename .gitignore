@@ -1,0 +1,28 @@
+/target
+*.bin
+*.key
+.env
+
+# Rust-specific ignores
+**/*.rs.bk
+Cargo.lock
+
+# IDE-specific ignores (optional, but often useful)
+.vscode/
+.idea/
+
+# OS-specific ignores
+.DS_Store
+Thumbs.db
+
+# Build script output
+/encrypted_gmail_secret.bin
+/encrypted_outlook_secret.bin
+/secret.key
+/nonce.bin
+
+/src/embedded/*.bin
+/src/embedded/*.key
+
+gmail_*.json
+outlook_*.json
