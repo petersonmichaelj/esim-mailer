@@ -25,15 +25,15 @@ fn main() {
     let out_dir = Path::new("src").join("embedded");
     std::fs::create_dir_all(&out_dir).unwrap();
 
+    let mut file = File::create(out_dir.join("encrypted_gmail_secret.bin")).unwrap();
     if let Some(gmail_secret) = gmail_secret {
         let encrypted_gmail = cipher.encrypt(nonce, gmail_secret.as_bytes()).unwrap();
-        let mut file = File::create(out_dir.join("encrypted_gmail_secret.bin")).unwrap();
         file.write_all(&encrypted_gmail).unwrap();
     }
 
+    let mut file = File::create(out_dir.join("encrypted_outlook_secret.bin")).unwrap();
     if let Some(outlook_secret) = outlook_secret {
         let encrypted_outlook = cipher.encrypt(nonce, outlook_secret.as_bytes()).unwrap();
-        let mut file = File::create(out_dir.join("encrypted_outlook_secret.bin")).unwrap();
         file.write_all(&encrypted_outlook).unwrap();
     }
 
