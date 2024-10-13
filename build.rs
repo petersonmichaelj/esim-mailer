@@ -13,6 +13,10 @@ fn main() {
     let gmail_secret = env::var("GMAIL_CLIENT_SECRET").ok();
     let outlook_secret = env::var("OUTLOOK_CLIENT_SECRET").ok();
 
+    // Add these lines to get the client IDs
+    let gmail_client_id = env::var("GMAIL_CLIENT_ID").expect("GMAIL_CLIENT_ID must be set");
+    let outlook_client_id = env::var("OUTLOOK_CLIENT_ID").expect("OUTLOOK_CLIENT_ID must be set");
+
     let mut key = [0u8; 32];
     rand::thread_rng().fill(&mut key);
     let key = Key::<Aes256Gcm>::from_slice(&key);
@@ -43,7 +47,16 @@ fn main() {
     let mut file = File::create(out_dir.join("nonce.bin")).unwrap();
     file.write_all(nonce.as_slice()).unwrap();
 
+    // Write client IDs to files
+    let mut file = File::create(out_dir.join("gmail_client_id.txt")).unwrap();
+    file.write_all(gmail_client_id.as_bytes()).unwrap();
+
+    let mut file = File::create(out_dir.join("outlook_client_id.txt")).unwrap();
+    file.write_all(outlook_client_id.as_bytes()).unwrap();
+
     println!("cargo:rerun-if-env-changed=GMAIL_CLIENT_SECRET");
     println!("cargo:rerun-if-env-changed=OUTLOOK_CLIENT_SECRET");
+    println!("cargo:rerun-if-env-changed=GMAIL_CLIENT_ID");
+    println!("cargo:rerun-if-env-changed=OUTLOOK_CLIENT_ID");
     println!("cargo:rerun-if-changed=.env");
 }

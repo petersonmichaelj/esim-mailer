@@ -1,4 +1,6 @@
-use crate::embedded::{GMAIL_SECRET, NONCE, OUTLOOK_SECRET, SECRET_KEY};
+use crate::embedded::{
+    GMAIL_CLIENT_ID, GMAIL_SECRET, NONCE, OUTLOOK_CLIENT_ID, OUTLOOK_SECRET, SECRET_KEY,
+};
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use oauth2::basic::BasicClient;
@@ -172,7 +174,7 @@ struct ProviderConfig {
 fn get_provider_config(provider: &str) -> ProviderConfig {
     match provider {
         "gmail" => ProviderConfig {
-            client_id: "717713860028-n64gbjt7d6u6ud6nveouj7cj9d7kpntr.apps.googleusercontent.com",
+            client_id: GMAIL_CLIENT_ID,
             encrypted_client_secret: if GMAIL_SECRET.is_empty() {
                 None
             } else {
@@ -184,7 +186,7 @@ fn get_provider_config(provider: &str) -> ProviderConfig {
             scope: "https://mail.google.com/",
         },
         "outlook" => ProviderConfig {
-            client_id: "845c149a-1e52-4b56-852e-537a10d33c81",
+            client_id: OUTLOOK_CLIENT_ID,
             encrypted_client_secret: if OUTLOOK_SECRET.is_empty() {
                 None
             } else {

@@ -23,6 +23,7 @@ Thumbs.db
 
 /src/embedded/*.bin
 /src/embedded/*.key
+/src/embedded/*.txt
 
 gmail_*.json
 outlook_*.json
