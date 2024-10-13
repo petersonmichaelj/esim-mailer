@@ -36,39 +36,39 @@ impl eframe::App for EsimMailerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("eSIM Mailer");
+            ui.add_space(10.0);
 
             let mut preview_changed = false;
 
-            ui.horizontal(|ui| {
-                ui.label("From:");
-                if ui.text_edit_singleline(&mut self.args.email_from).changed() {
-                    preview_changed = true;
-                }
-            });
+            egui::Grid::new("email_form")
+                .num_columns(1)
+                .spacing([0.0, 10.0])
+                .show(ui, |ui| {
+                    let Args {
+                        email_from,
+                        email_to,
+                        bcc,
+                        name,
+                        data_amount,
+                        time_period,
+                        ..
+                    } = &mut self.args;
+                    let mut preview_changed = false;
 
-            ui.horizontal(|ui| {
-                ui.label("To:");
-                if ui.text_edit_singleline(&mut self.args.email_to).changed() {
-                    preview_changed = true;
-                }
-            });
+                    add_form_field(ui, "From:", email_from, &mut preview_changed);
+                    add_form_field(ui, "To:", email_to, &mut preview_changed);
+                    add_form_field(
+                        ui,
+                        "BCC:",
+                        bcc.get_or_insert_with(String::new),
+                        &mut preview_changed,
+                    );
+                    add_form_field(ui, "Name:", name, &mut preview_changed);
+                    add_form_field(ui, "Data Amount:", data_amount, &mut preview_changed);
+                    add_form_field(ui, "Time Period:", time_period, &mut preview_changed);
+                });
 
-            ui.horizontal(|ui| {
-                ui.label("BCC:");
-                if let Some(bcc) = &mut self.args.bcc {
-                    if ui.text_edit_singleline(bcc).changed() {
-                        preview_changed = true;
-                    }
-                } else {
-                    let mut new_bcc = String::new();
-                    if ui.text_edit_singleline(&mut new_bcc).changed() {
-                        if !new_bcc.is_empty() {
-                            self.args.bcc = Some(new_bcc);
-                            preview_changed = true;
-                        }
-                    }
-                }
-            });
+            ui.add_space(10.0);
 
             ui.horizontal(|ui| {
                 ui.label("Template:");
@@ -83,32 +83,7 @@ impl eframe::App for EsimMailerApp {
                 }
             });
 
-            ui.horizontal(|ui| {
-                ui.label("Name:");
-                if ui.text_edit_singleline(&mut self.args.name).changed() {
-                    preview_changed = true;
-                }
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Data Amount:");
-                if ui
-                    .text_edit_singleline(&mut self.args.data_amount)
-                    .changed()
-                {
-                    preview_changed = true;
-                }
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Time Period:");
-                if ui
-                    .text_edit_singleline(&mut self.args.time_period)
-                    .changed()
-                {
-                    preview_changed = true;
-                }
-            });
+            ui.add_space(10.0);
 
             if ui.button("Select Images").clicked() {
                 if let Some(paths) = FileDialog::new()
@@ -122,22 +97,30 @@ impl eframe::App for EsimMailerApp {
 
             ui.label(format!("Selected images: {}", self.image_paths.len()));
 
+            ui.add_space(10.0);
+
             if preview_changed {
                 self.generate_preview();
             }
 
-            ui.label("Email Preview:");
-            ui.add(
-                egui::TextEdit::multiline(&mut self.email_preview)
-                    .desired_width(f32::INFINITY)
-                    .interactive(false),
-            ); // Make the field read-only
+            ui.group(|ui| {
+                ui.label("Email Preview:");
+                ui.add(
+                    egui::TextEdit::multiline(&mut self.email_preview)
+                        .desired_width(f32::INFINITY)
+                        .desired_rows(10)
+                        .interactive(false),
+                );
+            });
 
-            if ui.button("Send Email").clicked() {
-                self.send_email();
-            }
+            ui.add_space(10.0);
 
-            ui.label(&self.status);
+            ui.horizontal(|ui| {
+                if ui.button("Send Email").clicked() {
+                    self.send_email();
+                }
+                ui.label(&self.status);
+            });
         });
     }
 }
@@ -202,4 +185,17 @@ impl EsimMailerApp {
             self.email_preview = "Error: Template not found".to_string();
         }
     }
+}
+
+fn add_form_field(ui: &mut egui::Ui, label: &str, value: &mut String, preview_changed: &mut bool) {
+    ui.horizontal(|ui| {
+        ui.label(label);
+        if ui
+            .add(egui::TextEdit::singleline(value).desired_width(f32::INFINITY))
+            .changed()
+        {
+            *preview_changed = true;
+        }
+    });
+    ui.end_row();
 }
