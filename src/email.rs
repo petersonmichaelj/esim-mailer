@@ -84,7 +84,12 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
     Ok(())
 }
 
-fn replace_placeholders(content: &str, name: &str, data_amount: &str, time_period: &str) -> String {
+pub fn replace_placeholders(
+    content: &str,
+    name: &str,
+    data_amount: &str,
+    time_period: &str,
+) -> String {
     content
         .replace("{{name}}", name)
         .replace("{{data_amount}}", data_amount)

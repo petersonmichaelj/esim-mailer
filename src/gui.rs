@@ -8,11 +8,12 @@ pub struct EsimMailerApp {
     args: Args,
     image_paths: Vec<PathBuf>,
     status: String,
+    email_preview: String,
 }
 
 impl Default for EsimMailerApp {
     fn default() -> Self {
-        Self {
+        let mut app = Self {
             args: Args {
                 email_from: String::new(),
                 email_to: String::new(),
@@ -24,7 +25,10 @@ impl Default for EsimMailerApp {
             },
             image_paths: Vec::new(),
             status: String::new(),
-        }
+            email_preview: String::new(),
+        };
+        app.generate_preview(); // Generate preview on initial load
+        app
     }
 }
 
@@ -33,48 +37,77 @@ impl eframe::App for EsimMailerApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("eSIM Mailer");
 
+            let mut preview_changed = false;
+
             ui.horizontal(|ui| {
                 ui.label("From:");
-                ui.text_edit_singleline(&mut self.args.email_from);
+                if ui.text_edit_singleline(&mut self.args.email_from).changed() {
+                    preview_changed = true;
+                }
             });
 
             ui.horizontal(|ui| {
                 ui.label("To:");
-                ui.text_edit_singleline(&mut self.args.email_to);
+                if ui.text_edit_singleline(&mut self.args.email_to).changed() {
+                    preview_changed = true;
+                }
             });
 
             ui.horizontal(|ui| {
                 ui.label("BCC:");
                 if let Some(bcc) = &mut self.args.bcc {
-                    ui.text_edit_singleline(bcc);
+                    if ui.text_edit_singleline(bcc).changed() {
+                        preview_changed = true;
+                    }
                 } else {
                     let mut new_bcc = String::new();
-                    ui.text_edit_singleline(&mut new_bcc);
-                    if !new_bcc.is_empty() {
-                        self.args.bcc = Some(new_bcc);
+                    if ui.text_edit_singleline(&mut new_bcc).changed() {
+                        if !new_bcc.is_empty() {
+                            self.args.bcc = Some(new_bcc);
+                            preview_changed = true;
+                        }
                     }
                 }
             });
 
             ui.horizontal(|ui| {
                 ui.label("Template:");
-                ui.radio_value(&mut self.args.template, Template::Nomad, "Nomad");
-                ui.radio_value(&mut self.args.template, Template::Test, "Test");
+                if ui
+                    .radio_value(&mut self.args.template, Template::Nomad, "Nomad")
+                    .changed()
+                    || ui
+                        .radio_value(&mut self.args.template, Template::Test, "Test")
+                        .changed()
+                {
+                    preview_changed = true;
+                }
             });
 
             ui.horizontal(|ui| {
                 ui.label("Name:");
-                ui.text_edit_singleline(&mut self.args.name);
+                if ui.text_edit_singleline(&mut self.args.name).changed() {
+                    preview_changed = true;
+                }
             });
 
             ui.horizontal(|ui| {
                 ui.label("Data Amount:");
-                ui.text_edit_singleline(&mut self.args.data_amount);
+                if ui
+                    .text_edit_singleline(&mut self.args.data_amount)
+                    .changed()
+                {
+                    preview_changed = true;
+                }
             });
 
             ui.horizontal(|ui| {
                 ui.label("Time Period:");
-                ui.text_edit_singleline(&mut self.args.time_period);
+                if ui
+                    .text_edit_singleline(&mut self.args.time_period)
+                    .changed()
+                {
+                    preview_changed = true;
+                }
             });
 
             if ui.button("Select Images").clicked() {
@@ -83,10 +116,22 @@ impl eframe::App for EsimMailerApp {
                     .pick_files()
                 {
                     self.image_paths = paths;
+                    preview_changed = true;
                 }
             }
 
             ui.label(format!("Selected images: {}", self.image_paths.len()));
+
+            if preview_changed {
+                self.generate_preview();
+            }
+
+            ui.label("Email Preview:");
+            ui.add(
+                egui::TextEdit::multiline(&mut self.email_preview)
+                    .desired_width(f32::INFINITY)
+                    .interactive(false),
+            ); // Make the field read-only
 
             if ui.button("Send Email").clicked() {
                 self.send_email();
@@ -99,6 +144,8 @@ impl eframe::App for EsimMailerApp {
 
 impl EsimMailerApp {
     fn send_email(&mut self) {
+        self.generate_preview(); // Regenerate preview before sending
+
         if self.image_paths.is_empty() {
             self.status = "Please select at least one image.".to_string();
             return;
@@ -124,6 +171,35 @@ impl EsimMailerApp {
             Err(e) => {
                 self.status = format!("Error getting OAuth token: {}", e);
             }
+        }
+    }
+
+    fn generate_preview(&mut self) {
+        let template_name = match self.args.template {
+            Template::Nomad => "nomad",
+            Template::Test => "test",
+        };
+
+        let templates = crate::templates::load_templates();
+
+        if let Some(template) = templates.get(template_name) {
+            let subject = crate::email::replace_placeholders(
+                template.subject,
+                &self.args.name,
+                &self.args.data_amount,
+                &self.args.time_period,
+            );
+
+            let body = crate::email::replace_placeholders(
+                template.body,
+                &self.args.name,
+                &self.args.data_amount,
+                &self.args.time_period,
+            );
+
+            self.email_preview = format!("Subject: {}\n\nBody:\n{}", subject, body);
+        } else {
+            self.email_preview = "Error: Template not found".to_string();
         }
     }
 }
