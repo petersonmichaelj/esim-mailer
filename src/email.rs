@@ -46,9 +46,10 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
         replace_placeholders(template.subject, name, data_amount, time_period),
         count
     );
+    let body_content = replace_placeholders(template.body, name, data_amount, time_period);
     let body = format!(
-        "{}<br><img src='data:image/png;base64,{}'/>",
-        replace_placeholders(template.body, name, data_amount, time_period),
+        "<html><body>{}<br><img src='data:image/png;base64,{}'/></body></html>",
+        body_content.replace("\n", "<br>"), // Replace newlines with <br> tags here
         base64::engine::general_purpose::STANDARD.encode(&image_data)
     );
 
@@ -94,7 +95,7 @@ pub fn replace_placeholders(
         .replace("{{name}}", name)
         .replace("{{data_amount}}", data_amount)
         .replace("{{time_period}}", time_period)
-        .replace("\n", "<br>") // Add this line to replace newlines with HTML line breaks
+    // Keep this function as is, without replacing newlines
 }
 
 fn configure_mailer(
