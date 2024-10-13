@@ -1,6 +1,6 @@
 use clap::{Parser, ValueEnum};
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Default)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Email address of the sender
@@ -52,8 +52,9 @@ pub struct Args {
     pub time_period: String,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, ValueEnum, Default, PartialEq)]
 pub enum Template {
+    #[default]
     Nomad,
     Test,
 }
