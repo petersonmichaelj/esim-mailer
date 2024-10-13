@@ -7,8 +7,23 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+// Import the winres crate
+#[cfg(target_os = "windows")]
+use winres::WindowsResource;
+
+#[cfg(target_os = "windows")]
+fn embed_icon() {
+    let mut res = WindowsResource::new();
+    res.set_icon("appIcon.ico");
+    res.compile().unwrap();
+}
+
 fn main() {
     dotenv().ok(); // Load .env file if it exists
+
+    // Embed the icon on Windows
+    #[cfg(target_os = "windows")]
+    embed_icon();
 
     let gmail_secret = env::var("GMAIL_CLIENT_SECRET").ok();
     let outlook_secret = env::var("OUTLOOK_CLIENT_SECRET").ok();
