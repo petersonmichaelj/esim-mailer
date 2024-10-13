@@ -53,19 +53,14 @@ impl eframe::App for EsimMailerApp {
                         time_period,
                         ..
                     } = &mut self.args;
-                    let mut preview_changed = false;
 
-                    add_form_field(ui, "From:", email_from, &mut preview_changed);
-                    add_form_field(ui, "To:", email_to, &mut preview_changed);
-                    add_form_field(
-                        ui,
-                        "BCC:",
-                        bcc.get_or_insert_with(String::new),
-                        &mut preview_changed,
-                    );
-                    add_form_field(ui, "Name:", name, &mut preview_changed);
-                    add_form_field(ui, "Data Amount:", data_amount, &mut preview_changed);
-                    add_form_field(ui, "Time Period:", time_period, &mut preview_changed);
+                    preview_changed |= add_form_field(ui, "From:", email_from);
+                    preview_changed |= add_form_field(ui, "To:", email_to);
+                    preview_changed |=
+                        add_form_field(ui, "BCC:", bcc.get_or_insert_with(String::new));
+                    preview_changed |= add_form_field(ui, "Name:", name);
+                    preview_changed |= add_form_field(ui, "Data Amount:", data_amount);
+                    preview_changed |= add_form_field(ui, "Time Period:", time_period);
                 });
 
             ui.add_space(10.0);
@@ -187,15 +182,14 @@ impl EsimMailerApp {
     }
 }
 
-fn add_form_field(ui: &mut egui::Ui, label: &str, value: &mut String, preview_changed: &mut bool) {
+fn add_form_field(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
+    let mut changed = false;
     ui.horizontal(|ui| {
         ui.label(label);
-        if ui
+        changed = ui
             .add(egui::TextEdit::singleline(value).desired_width(f32::INFINITY))
-            .changed()
-        {
-            *preview_changed = true;
-        }
+            .changed();
     });
     ui.end_row();
+    changed
 }
