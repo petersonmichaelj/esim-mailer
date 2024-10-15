@@ -37,7 +37,7 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
 
     // Replace placeholders in the template subject and body
     let subject = format!(
-        "{} - {} - {}",
+        "{} - {}",
         replace_placeholders(
             template.subject,
             &args.provider,
@@ -46,7 +46,6 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
             time_period,
             &args.location
         ),
-        args.location,
         count
     );
     let body_content = replace_placeholders(
