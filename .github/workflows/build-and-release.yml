@@ -22,11 +22,11 @@ jobs:
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact_name: esim-mailer
-            asset_name: esim-mailer-macos-x64
+            asset_name: esim-mailer-macos-x64.dmg
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: esim-mailer
-            asset_name: esim-mailer-macos-arm64
+            asset_name: esim-mailer-macos-arm64.dmg
 
     steps:
       - uses: actions/checkout@v4
@@ -48,9 +48,59 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }}
 
-      - name: Rename artifact (macOS)
+      - name: Create .icns file (macOS)
         if: runner.os == 'macOS'
-        run: mv target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
+        run: |
+          mkdir MyIcon.iconset
+          sips -z 16 16     appIcon.png --out MyIcon.iconset/icon_16x16.png
+          sips -z 32 32     appIcon.png --out MyIcon.iconset/icon_16x16@2x.png
+          sips -z 32 32     appIcon.png --out MyIcon.iconset/icon_32x32.png
+          sips -z 64 64     appIcon.png --out MyIcon.iconset/icon_32x32@2x.png
+          sips -z 128 128   appIcon.png --out MyIcon.iconset/icon_128x128.png
+          sips -z 256 256   appIcon.png --out MyIcon.iconset/icon_128x128@2x.png
+          sips -z 256 256   appIcon.png --out MyIcon.iconset/icon_256x256.png
+          sips -z 512 512   appIcon.png --out MyIcon.iconset/icon_256x256@2x.png
+          sips -z 512 512   appIcon.png --out MyIcon.iconset/icon_512x512.png
+          cp appIcon.png MyIcon.iconset/icon_512x512@2x.png
+          iconutil -c icns MyIcon.iconset
+          mv MyIcon.icns ESim-Mailer.app/Contents/Resources/AppIcon.icns
+
+      - name: Create .app bundle (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p ESim-Mailer.app/Contents/MacOS
+          mkdir -p ESim-Mailer.app/Contents/Resources
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ESim-Mailer.app/Contents/MacOS/
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo '<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>esim-mailer</string>
+            <key>CFBundleIconFile</key>
+            <string>AppIcon</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.petersonmichaelj.esim-mailer</string>
+            <key>CFBundleName</key>
+            <string>ESim Mailer</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>'$VERSION'</string>
+            <key>CFBundleVersion</key>
+            <string>'$VERSION'</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.11</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>' > ESim-Mailer.app/Contents/Info.plist
+
+      - name: Create DMG (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          hdiutil create -volname "ESim Mailer" -srcfolder ESim-Mailer.app -ov -format UDZO ${{ matrix.asset_name }}
 
       - name: Rename artifact (Windows)
         if: runner.os == 'Windows'
