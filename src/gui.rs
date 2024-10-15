@@ -2,7 +2,7 @@ use eframe::egui;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
-use crate::{args::Template, get_or_refresh_token, send_email, Args};
+use crate::{args::Args, get_or_refresh_token, send_email};
 
 pub struct EsimMailerApp {
     args: Args,
@@ -18,16 +18,17 @@ impl Default for EsimMailerApp {
                 email_from: String::new(),
                 email_to: String::new(),
                 bcc: None,
-                template: Template::Nomad,
+                provider: String::new(),
                 name: String::new(),
                 data_amount: String::new(),
                 time_period: String::new(),
+                location: String::new(),
             },
             image_paths: Vec::new(),
             status: String::new(),
             email_preview: String::new(),
         };
-        app.generate_preview(); // Generate preview on initial load
+        app.generate_preview();
         app
     }
 }
@@ -48,35 +49,23 @@ impl eframe::App for EsimMailerApp {
                         email_from,
                         email_to,
                         bcc,
+                        provider,
                         name,
                         data_amount,
                         time_period,
-                        ..
+                        location,
                     } = &mut self.args;
 
                     preview_changed |= add_form_field(ui, "From:", email_from);
                     preview_changed |= add_form_field(ui, "To:", email_to);
                     preview_changed |=
                         add_form_field(ui, "BCC:", bcc.get_or_insert_with(String::new));
+                    preview_changed |= add_form_field(ui, "Provider:", provider);
                     preview_changed |= add_form_field(ui, "Name:", name);
                     preview_changed |= add_form_field(ui, "Data Amount:", data_amount);
                     preview_changed |= add_form_field(ui, "Time Period:", time_period);
+                    preview_changed |= add_form_field(ui, "Location:", location);
                 });
-
-            ui.add_space(10.0);
-
-            ui.horizontal(|ui| {
-                ui.label("Template:");
-                if ui
-                    .radio_value(&mut self.args.template, Template::Nomad, "Nomad")
-                    .changed()
-                    || ui
-                        .radio_value(&mut self.args.template, Template::Test, "Test")
-                        .changed()
-                {
-                    preview_changed = true;
-                }
-            });
 
             ui.add_space(10.0);
 
@@ -153,31 +142,30 @@ impl EsimMailerApp {
     }
 
     fn generate_preview(&mut self) {
-        let template_name = match self.args.template {
-            Template::Nomad => "nomad",
-            Template::Test => "test",
-        };
-
         let templates = crate::templates::load_templates();
 
-        if let Some(template) = templates.get(template_name) {
+        if let Some(template) = templates.get("shared") {
             let subject = crate::email::replace_placeholders(
                 template.subject,
+                &self.args.provider,
                 &self.args.name,
                 &self.args.data_amount,
                 &self.args.time_period,
+                &self.args.location,
             );
 
             let body = crate::email::replace_placeholders(
                 template.body,
+                &self.args.provider,
                 &self.args.name,
                 &self.args.data_amount,
                 &self.args.time_period,
+                &self.args.location,
             );
 
             self.email_preview = format!("Subject: {}\n\nBody:\n{}", subject, body);
         } else {
-            self.email_preview = "Error: Template not found".to_string();
+            self.email_preview = "Error: Shared template not found".to_string();
         }
     }
 }

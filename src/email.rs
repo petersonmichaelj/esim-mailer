@@ -13,10 +13,6 @@ use std::path::Path;
 pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -> io::Result<()> {
     let email_from = &args.email_from;
     let email_to = &args.email_to;
-    let template_name = match args.template {
-        crate::args::Template::Nomad => "nomad",
-        crate::args::Template::Test => "test",
-    };
     let name = &args.name;
     let data_amount = &args.data_amount;
     let time_period = &args.time_period;
@@ -25,14 +21,13 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
     let templates = load_templates();
 
     // Get template content
-    let template = match templates.get(template_name) {
+    let template = match templates.get("shared") {
         Some(content) => content,
         None => {
-            eprintln!("Template '{}' not found", template_name);
-            eprintln!("Available templates: {:?}", templates.keys());
+            eprintln!("Shared template not found");
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
-                "Template not found",
+                "Shared template not found",
             ));
         }
     };
@@ -42,11 +37,26 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
 
     // Replace placeholders in the template subject and body
     let subject = format!(
-        "{} - {}",
-        replace_placeholders(template.subject, name, data_amount, time_period),
+        "{} - {} - {}",
+        replace_placeholders(
+            template.subject,
+            &args.provider,
+            name,
+            data_amount,
+            time_period,
+            &args.location
+        ),
+        args.location,
         count
     );
-    let body_content = replace_placeholders(template.body, name, data_amount, time_period);
+    let body_content = replace_placeholders(
+        template.body,
+        &args.provider,
+        name,
+        data_amount,
+        time_period,
+        &args.location,
+    );
     let body = format!(
         "<html><body>{}<br><img src='data:image/png;base64,{}'/></body></html>",
         body_content.replace("\n", "<br>"), // Replace newlines with <br> tags here
@@ -87,15 +97,18 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
 
 pub fn replace_placeholders(
     content: &str,
+    provider: &str,
     name: &str,
     data_amount: &str,
     time_period: &str,
+    location: &str,
 ) -> String {
     content
+        .replace("{{provider}}", provider)
         .replace("{{name}}", name)
         .replace("{{data_amount}}", data_amount)
         .replace("{{time_period}}", time_period)
-    // Keep this function as is, without replacing newlines
+        .replace("{{location}}", location)
 }
 
 fn configure_mailer(

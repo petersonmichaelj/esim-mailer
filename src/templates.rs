@@ -8,19 +8,12 @@ pub struct EmailTemplate {
 pub fn load_templates() -> HashMap<String, EmailTemplate> {
     let mut templates = HashMap::new();
     templates.insert(
-        "nomad".to_string(),
+        "shared".to_string(),
         EmailTemplate {
-            subject: "[Nomad] eSIM",
-            body: include_str!("../templates/nomad.html"),
+            subject: "[{{provider}}] {{location}} eSIM",
+            body: include_str!("../templates/shared.html"),
         },
     );
-    templates.insert(
-        "test".to_string(),
-        EmailTemplate {
-            subject: "Test Email",
-            body: include_str!("../templates/test.html"),
-        },
-    );
-    // Add more templates as needed
+    // Remove other templates
     templates
 }

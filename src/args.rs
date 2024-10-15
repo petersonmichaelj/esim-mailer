@@ -1,4 +1,4 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 
 #[derive(Parser, Debug, Default)]
 #[command(author, version, about, long_about = None)]
@@ -23,13 +23,9 @@ pub struct Args {
     #[arg(long, help = "The email address to BCC (optional)")]
     pub bcc: Option<String>,
 
-    /// Template to use for the email
-    #[arg(
-        long,
-        value_enum,
-        help = "The template to use for the email content. Valid options: nomad, test"
-    )]
-    pub template: Template,
+    /// Provider name
+    #[arg(long, help = "The name of the eSIM provider")]
+    pub provider: String,
 
     /// Customer name
     #[arg(short, long, help = "The name used to sign the email")]
@@ -50,11 +46,12 @@ pub struct Args {
         help = "The validity period of the eSIM plan (e.g., '30 days')"
     )]
     pub time_period: String,
-}
 
-#[derive(Debug, Clone, ValueEnum, Default, PartialEq)]
-pub enum Template {
-    #[default]
-    Nomad,
-    Test,
+    /// Location
+    #[arg(
+        short,
+        long,
+        help = "The location for the eSIM (e.g., 'Egypt', 'Middle East')"
+    )]
+    pub location: String,
 }
