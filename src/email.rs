@@ -65,14 +65,25 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
 
     // Create email
     let mut email_builder = Message::builder()
-        .from(email_from.parse().unwrap())
-        .to(email_to.parse().unwrap())
+        .from(
+            email_from
+                .parse()
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?,
+        )
+        .to(email_to
+            .parse()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?)
         .subject(subject)
         .header(header::ContentType::TEXT_HTML);
 
-    // Add BCC if provided
+    // Add BCC if provided and not empty
     if let Some(bcc) = &args.bcc {
-        email_builder = email_builder.bcc(bcc.parse().unwrap());
+        if !bcc.is_empty() {
+            email_builder = email_builder.bcc(
+                bcc.parse()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?,
+            );
+        }
     }
 
     let email = email_builder.body(body).unwrap();

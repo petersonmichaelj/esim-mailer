@@ -36,74 +36,76 @@ impl Default for EsimMailerApp {
 impl eframe::App for EsimMailerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("eSIM Mailer");
-            ui.add_space(10.0);
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.heading("eSIM Mailer");
+                ui.add_space(10.0);
 
-            let mut preview_changed = false;
+                let mut preview_changed = false;
 
-            egui::Grid::new("email_form")
-                .num_columns(1)
-                .spacing([0.0, 10.0])
-                .show(ui, |ui| {
-                    let Args {
-                        email_from,
-                        email_to,
-                        bcc,
-                        provider,
-                        name,
-                        data_amount,
-                        time_period,
-                        location,
-                    } = &mut self.args;
+                egui::Grid::new("email_form")
+                    .num_columns(1)
+                    .spacing([0.0, 10.0])
+                    .show(ui, |ui| {
+                        let Args {
+                            email_from,
+                            email_to,
+                            bcc,
+                            provider,
+                            name,
+                            data_amount,
+                            time_period,
+                            location,
+                        } = &mut self.args;
 
-                    preview_changed |= add_form_field(ui, "From:", email_from);
-                    preview_changed |= add_form_field(ui, "To:", email_to);
-                    preview_changed |=
-                        add_form_field(ui, "BCC:", bcc.get_or_insert_with(String::new));
-                    preview_changed |= add_form_field(ui, "Provider:", provider);
-                    preview_changed |= add_form_field(ui, "Name:", name);
-                    preview_changed |= add_form_field(ui, "Data Amount:", data_amount);
-                    preview_changed |= add_form_field(ui, "Time Period:", time_period);
-                    preview_changed |= add_form_field(ui, "Location:", location);
+                        preview_changed |= add_form_field(ui, "From:", email_from);
+                        preview_changed |= add_form_field(ui, "To:", email_to);
+                        preview_changed |=
+                            add_form_field(ui, "BCC:", bcc.get_or_insert_with(String::new));
+                        preview_changed |= add_form_field(ui, "Provider:", provider);
+                        preview_changed |= add_form_field(ui, "Name:", name);
+                        preview_changed |= add_form_field(ui, "Data Amount:", data_amount);
+                        preview_changed |= add_form_field(ui, "Time Period:", time_period);
+                        preview_changed |= add_form_field(ui, "Location:", location);
+                    });
+
+                ui.add_space(10.0);
+
+                if ui.button("Select Images").clicked() {
+                    if let Some(paths) = FileDialog::new()
+                        .add_filter("Image Files", &["png", "jpg", "jpeg", "gif"])
+                        .pick_files()
+                    {
+                        self.image_paths = paths;
+                        preview_changed = true;
+                    }
+                }
+
+                ui.label(format!("Selected images: {}", self.image_paths.len()));
+
+                ui.add_space(10.0);
+
+                if preview_changed {
+                    self.generate_preview();
+                }
+
+                ui.group(|ui| {
+                    ui.label("Email Preview:");
+                    ui.add(
+                        egui::TextEdit::multiline(&mut self.email_preview)
+                            .desired_width(f32::INFINITY)
+                            .desired_rows(10)
+                            .interactive(false),
+                    );
                 });
 
-            ui.add_space(10.0);
+                ui.add_space(10.0);
 
-            if ui.button("Select Images").clicked() {
-                if let Some(paths) = FileDialog::new()
-                    .add_filter("Image Files", &["png", "jpg", "jpeg", "gif"])
-                    .pick_files()
-                {
-                    self.image_paths = paths;
-                    preview_changed = true;
-                }
-            }
-
-            ui.label(format!("Selected images: {}", self.image_paths.len()));
-
-            ui.add_space(10.0);
-
-            if preview_changed {
-                self.generate_preview();
-            }
-
-            ui.group(|ui| {
-                ui.label("Email Preview:");
-                ui.add(
-                    egui::TextEdit::multiline(&mut self.email_preview)
-                        .desired_width(f32::INFINITY)
-                        .desired_rows(10)
-                        .interactive(false),
-                );
-            });
-
-            ui.add_space(10.0);
-
-            ui.horizontal(|ui| {
-                if ui.button("Send Email").clicked() {
-                    self.send_email();
-                }
-                ui.label(&self.status);
+                ui.horizontal(|ui| {
+                    if ui.button("Send Email").clicked() {
+                        self.send_email();
+                    }
+                    ui.label(&self.status);
+                });
             });
         });
     }
