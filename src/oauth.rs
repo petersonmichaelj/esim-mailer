@@ -9,11 +9,13 @@ use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
     RefreshToken, Scope, TokenResponse, TokenUrl,
 };
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fs;
+use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::TcpListener;
+use std::sync::Mutex;
 use url::Url;
 use webbrowser;
 
@@ -32,26 +34,24 @@ pub fn determine_provider(email: &str) -> &'static str {
     }
 }
 
+static REFRESH_TOKEN_CACHE: Lazy<Mutex<HashMap<String, String>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
 pub fn get_or_refresh_token(provider: &str, email: &str) -> io::Result<String> {
     let email_hash = format!("{:x}", Sha256::digest(email.as_bytes()));
-    let cache_file = format!("{}_{}_token_cache.json", provider, email_hash);
+    let cache_key = format!("{}_{}", provider, email_hash);
 
-    if let Ok(cached_data) = fs::read_to_string(&cache_file) {
-        if let Ok(cached_token) = serde_json::from_str::<CachedToken>(&cached_data) {
-            // Always try to refresh the token
-            if let Ok((access_token, new_refresh_token)) =
-                refresh_oauth_token(provider, &cached_token.refresh_token)
-            {
-                // Update the cached refresh token if it has changed
-                if new_refresh_token != cached_token.refresh_token {
-                    let new_cached_token = CachedToken {
-                        refresh_token: new_refresh_token,
-                    };
-                    let new_cached_data = serde_json::to_string(&new_cached_token)?;
-                    fs::write(&cache_file, new_cached_data)?;
-                }
-                return Ok(access_token);
+    let mut cache = REFRESH_TOKEN_CACHE.lock().unwrap();
+
+    if let Some(refresh_token) = cache.get(&cache_key) {
+        // Try to refresh the token
+        if let Ok((access_token, new_refresh_token)) = refresh_oauth_token(provider, refresh_token)
+        {
+            // Update the cached refresh token if it has changed
+            if new_refresh_token != *refresh_token {
+                cache.insert(cache_key, new_refresh_token);
             }
+            return Ok(access_token);
         }
     }
 
@@ -59,9 +59,7 @@ pub fn get_or_refresh_token(provider: &str, email: &str) -> io::Result<String> {
     let (access_token, refresh_token) = perform_oauth(provider)?;
 
     // Cache the new refresh token
-    let cached_token = CachedToken { refresh_token };
-    let cached_data = serde_json::to_string(&cached_token)?;
-    fs::write(&cache_file, cached_data)?;
+    cache.insert(cache_key, refresh_token);
 
     Ok(access_token)
 }

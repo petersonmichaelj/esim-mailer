@@ -1303,6 +1303,7 @@ dependencies = [
  "eframe",
  "lettre",
  "oauth2",
+ "once_cell",
  "rand",
  "rfd",
  "serde",
