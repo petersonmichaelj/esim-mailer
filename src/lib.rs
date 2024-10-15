@@ -1,6 +1,7 @@
 pub mod args;
 pub mod email;
 mod embedded;
+pub mod gui;
 pub mod oauth;
 pub mod templates;
 
