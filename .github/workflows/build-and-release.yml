@@ -48,7 +48,7 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }}
 
-      - name: Install ImageMagick
+      - name: Install ImageMagick (macOS)
         if: runner.os == 'macOS'
         run: brew install imagemagick
 
