@@ -1,6 +1,6 @@
 use clap::Parser;
 
-#[derive(Parser, Debug, Default)]
+#[derive(Parser, Debug, Default, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Email address of the sender

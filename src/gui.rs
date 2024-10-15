@@ -1,35 +1,28 @@
 use eframe::egui;
 use rfd::FileDialog;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 use crate::{args::Args, get_or_refresh_token, send_email};
 
 pub struct EsimMailerApp {
     args: Args,
     image_paths: Vec<PathBuf>,
-    status: String,
+    status: Arc<Mutex<String>>,
     email_preview: String,
+    is_sending: Arc<Mutex<bool>>,
 }
 
 impl Default for EsimMailerApp {
     fn default() -> Self {
-        let mut app = Self {
-            args: Args {
-                email_from: String::new(),
-                email_to: String::new(),
-                bcc: None,
-                provider: String::new(),
-                name: String::new(),
-                data_amount: String::new(),
-                time_period: String::new(),
-                location: String::new(),
-            },
+        Self {
+            args: Args::default(),
             image_paths: Vec::new(),
-            status: String::new(),
+            status: Arc::new(Mutex::new(String::new())),
             email_preview: String::new(),
-        };
-        app.generate_preview();
-        app
+            is_sending: Arc::new(Mutex::new(false)),
+        }
     }
 }
 
@@ -57,6 +50,7 @@ impl eframe::App for EsimMailerApp {
                             location,
                         } = &mut self.args;
 
+                        // If any form field changes, set preview_changed to true
                         preview_changed |= add_form_field(ui, "From:", email_from);
                         preview_changed |= add_form_field(ui, "To:", email_to);
                         preview_changed |=
@@ -86,6 +80,10 @@ impl eframe::App for EsimMailerApp {
 
                 if preview_changed {
                     self.generate_preview();
+                    // Clear the status message when form fields are updated
+                    if let Ok(mut status_lock) = self.status.lock() {
+                        status_lock.clear();
+                    }
                 }
 
                 ui.group(|ui| {
@@ -101,48 +99,31 @@ impl eframe::App for EsimMailerApp {
                 ui.add_space(10.0);
 
                 ui.horizontal(|ui| {
-                    if ui.button("Send Email").clicked() {
-                        self.send_email();
+                    if !*self.is_sending.lock().unwrap() {
+                        if ui.button("Send Email").clicked() {
+                            self.send_email_async();
+                        }
+                    } else {
+                        ui.add(egui::Spinner::new());
+                        ui.label("Sending email...");
                     }
-                    ui.label(&self.status);
                 });
+
+                ui.add_space(10.0);
+
+                // Display status messages when not sending
+                if !*self.is_sending.lock().unwrap() {
+                    let status = self.status.lock().unwrap().clone();
+                    if !status.is_empty() {
+                        ui.label(status);
+                    }
+                }
             });
         });
     }
 }
 
 impl EsimMailerApp {
-    fn send_email(&mut self) {
-        self.generate_preview(); // Regenerate preview before sending
-
-        if self.image_paths.is_empty() {
-            self.status = "Please select at least one image.".to_string();
-            return;
-        }
-
-        let provider = crate::oauth::determine_provider(&self.args.email_from);
-
-        match get_or_refresh_token(provider, &self.args.email_from) {
-            Ok(token) => {
-                for (index, path) in self.image_paths.iter().enumerate() {
-                    match send_email(&self.args, token.clone(), path, index + 1) {
-                        Ok(_) => {
-                            self.status =
-                                format!("Email sent successfully for {} images.", index + 1);
-                        }
-                        Err(e) => {
-                            self.status = format!("Error sending email: {}", e);
-                            break;
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                self.status = format!("Error getting OAuth token: {}", e);
-            }
-        }
-    }
-
     fn generate_preview(&mut self) {
         let templates = crate::templates::load_templates();
 
@@ -169,6 +150,51 @@ impl EsimMailerApp {
         } else {
             self.email_preview = "Error: Shared template not found".to_string();
         }
+    }
+
+    fn send_email_async(&self) {
+        let status = Arc::clone(&self.status);
+        let is_sending = Arc::clone(&self.is_sending);
+        *is_sending.lock().unwrap() = true;
+
+        let args = self.args.clone();
+        let image_paths = self.image_paths.clone();
+
+        thread::spawn(move || {
+            let provider = crate::oauth::determine_provider(&args.email_from);
+
+            match get_or_refresh_token(provider, &args.email_from) {
+                Ok(token) => {
+                    for (index, path) in image_paths.iter().enumerate() {
+                        match send_email(&args, token.clone(), path, index + 1) {
+                            Ok(_) => {
+                                let mut status_lock = status.lock().unwrap();
+                                *status_lock =
+                                    format!("Email sent successfully for {} images.", index + 1);
+                                drop(status_lock);
+                                let mut sending_lock = is_sending.lock().unwrap();
+                                *sending_lock = false;
+                            }
+                            Err(e) => {
+                                let mut status_lock = status.lock().unwrap();
+                                *status_lock = format!("Error sending email: {}", e);
+                                drop(status_lock);
+                                let mut sending_lock = is_sending.lock().unwrap();
+                                *sending_lock = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    let mut status_lock = status.lock().unwrap();
+                    *status_lock = format!("Error getting OAuth token: {}", e);
+                    drop(status_lock);
+                    let mut sending_lock = is_sending.lock().unwrap();
+                    *sending_lock = false;
+                }
+            }
+        });
     }
 }
 
