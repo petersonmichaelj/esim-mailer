@@ -96,6 +96,11 @@ jobs:
           </dict>
           </plist>' > ESim-Mailer.app/Contents/Info.plist
 
+      - name: Self-sign app (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --force --deep --sign - ESim-Mailer.app
+
       - name: Create DMG (macOS)
         if: runner.os == 'macOS'
         run: |
