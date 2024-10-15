@@ -1311,6 +1311,7 @@ dependencies = [
  "sha2",
  "url",
  "webbrowser",
+ "winapi",
  "winres",
 ]
 
