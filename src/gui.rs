@@ -64,7 +64,7 @@ impl eframe::App for EsimMailerApp {
 
                 ui.add_space(10.0);
 
-                if ui.button("Select Images").clicked() {
+                if ui.button("Select QR codes").clicked() {
                     if let Some(paths) = FileDialog::new()
                         .add_filter("Image Files", &["png", "jpg", "jpeg", "gif"])
                         .pick_files()
@@ -74,7 +74,7 @@ impl eframe::App for EsimMailerApp {
                     }
                 }
 
-                ui.label(format!("Selected images: {}", self.image_paths.len()));
+                ui.label(format!("Selected QR codes: {}", self.image_paths.len()));
 
                 ui.add_space(10.0);
 
@@ -170,7 +170,7 @@ impl EsimMailerApp {
                             Ok(_) => {
                                 let mut status_lock = status.lock().unwrap();
                                 *status_lock =
-                                    format!("Email sent successfully for {} images.", index + 1);
+                                    format!("{} eSIM emails sent successfully.", index + 1);
                                 drop(status_lock);
                                 let mut sending_lock = is_sending.lock().unwrap();
                                 *sending_lock = false;
