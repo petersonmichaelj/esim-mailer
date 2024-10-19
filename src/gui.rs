@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::{args::Args, get_or_refresh_token, send_email};
+use crate::{get_or_refresh_token, send_email, Args};
 
 pub struct EsimMailerApp {
     args: Args,
