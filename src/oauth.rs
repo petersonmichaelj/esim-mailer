@@ -228,3 +228,53 @@ fn decrypt_client_secret(encrypted_secret: &[u8]) -> String {
 
     String::from_utf8(plaintext).expect("invalid utf8")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_determine_provider() {
+        assert_eq!(determine_provider("test@gmail.com"), "gmail");
+        assert_eq!(determine_provider("test@outlook.com"), "outlook");
+        assert_eq!(determine_provider("test@hotmail.com"), "outlook");
+    }
+
+    #[test]
+    #[should_panic(expected = "Unsupported email provider")]
+    fn test_determine_provider_unsupported() {
+        determine_provider("test@unsupported.com");
+    }
+
+    #[test]
+    fn test_extract_code() {
+        let request = "GET /?code=test_code&state=test_state HTTP/1.1";
+        assert_eq!(extract_code(request), Some("test_code".to_string()));
+
+        let request_without_code = "GET /?state=test_state HTTP/1.1";
+        assert_eq!(extract_code(request_without_code), None);
+    }
+
+    #[test]
+    fn test_get_provider_config() {
+        let gmail_config = get_provider_config("gmail");
+        assert_eq!(gmail_config.client_id, GMAIL_CLIENT_ID);
+        assert_eq!(
+            gmail_config.auth_url,
+            "https://accounts.google.com/o/oauth2/v2/auth"
+        );
+
+        let outlook_config = get_provider_config("outlook");
+        assert_eq!(outlook_config.client_id, OUTLOOK_CLIENT_ID);
+        assert_eq!(
+            outlook_config.auth_url,
+            "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Unsupported email provider")]
+    fn test_get_provider_config_unsupported() {
+        get_provider_config("unsupported");
+    }
+}

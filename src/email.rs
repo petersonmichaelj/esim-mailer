@@ -155,3 +155,37 @@ fn configure_mailer(
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_replace_placeholders() {
+        let content = "Hello {{name}}, your {{provider}} eSIM for {{location}} includes {{data_amount}} for {{time_period}}.";
+        let result =
+            replace_placeholders(content, "TestProvider", "John", "5GB", "30 days", "Egypt");
+        assert_eq!(
+            result,
+            "Hello John, your TestProvider eSIM for Egypt includes 5GB for 30 days."
+        );
+    }
+
+    #[test]
+    fn test_configure_mailer_gmail() {
+        let result = configure_mailer("gmail", "test@gmail.com", "token".to_string());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_configure_mailer_outlook() {
+        let result = configure_mailer("outlook", "test@outlook.com", "token".to_string());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_configure_mailer_unsupported() {
+        let result = configure_mailer("unsupported", "test@unsupported.com", "token".to_string());
+        assert!(result.is_err());
+    }
+}

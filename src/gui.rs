@@ -209,3 +209,43 @@ fn add_form_field(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
     ui.end_row();
     changed
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_esim_mailer_app_default() {
+        let app = EsimMailerApp::default();
+        assert_eq!(app.args, Args::default());
+        assert!(app.image_paths.is_empty());
+        assert_eq!(app.status.lock().unwrap().as_str(), "");
+        assert_eq!(app.email_preview, "");
+        assert_eq!(*app.is_sending.lock().unwrap(), false);
+    }
+
+    #[test]
+    fn test_generate_preview() {
+        let mut app = EsimMailerApp::default();
+        app.args = Args {
+            email_from: "from@example.com".to_string(),
+            email_to: "to@example.com".to_string(),
+            bcc: Some("bcc@example.com".to_string()),
+            provider: "TestProvider".to_string(),
+            name: "John".to_string(),
+            data_amount: "5GB".to_string(),
+            time_period: "30 days".to_string(),
+            location: "Egypt".to_string(),
+        };
+
+        app.generate_preview();
+
+        assert!(app
+            .email_preview
+            .contains("Subject: [TestProvider] Egypt eSIM"));
+        assert!(app.email_preview.contains("John"));
+        assert!(app.email_preview.contains("5GB"));
+        assert!(app.email_preview.contains("30 days"));
+        assert!(app.email_preview.contains("Egypt"));
+    }
+}
