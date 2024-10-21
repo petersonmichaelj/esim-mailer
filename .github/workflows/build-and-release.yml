@@ -9,8 +9,15 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build and Release
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      release: true
+    secrets: inherit
+
+  release:
+    needs: build
+    name: Release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -31,22 +38,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      - name: Download artifact
+        uses: actions/download-artifact@v3
         with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
-
-      - name: Build
-        uses: actions-rs/cargo@v1
-        env:
-          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
-          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
-          OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
-        with:
-          command: build
-          args: --release --target ${{ matrix.target }}
+          name: ${{ matrix.os }}-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release
 
       - name: Install ImageMagick (macOS)
         if: runner.os == 'macOS'
