@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload artifact
         if: inputs.release
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.target }}
           path: target/${{ matrix.target }}/${{ inputs.release && 'release' || 'debug' }}/esim-mailer*
