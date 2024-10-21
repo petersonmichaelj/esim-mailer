@@ -14,10 +14,12 @@ pub struct EmailTemplate {
     pub body: &'static str,
 }
 
-pub fn get_template() -> EmailTemplate {
-    EmailTemplate {
-        subject: "[{{provider}}] {{location}} eSIM",
-        body: include_str!("../templates/email_template.html"),
+impl EmailTemplate {
+    pub fn new() -> Self {
+        Self {
+            subject: "[{{provider}}] {{location}} eSIM",
+            body: include_str!("../templates/email_template.html"),
+        }
     }
 }
 
@@ -29,7 +31,7 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
     let time_period = &args.time_period;
 
     // Get template content
-    let template = get_template();
+    let template = EmailTemplate::new();
 
     // Read image file
     let image_data = fs::read(image_path)?;

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::email::get_template;
+use crate::email::EmailTemplate;
 use crate::{get_or_refresh_token, send_email, Args};
 
 pub struct EsimMailerApp {
@@ -126,7 +126,7 @@ impl eframe::App for EsimMailerApp {
 
 impl EsimMailerApp {
     fn generate_preview(&mut self) {
-        let template = get_template();
+        let template = EmailTemplate::new();
 
         let subject = crate::email::replace_placeholders(
             template.subject,
