@@ -22,10 +22,6 @@ webbrowser = "1.0.2"
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winuser"] }
 
-[[bin]]
-name = "esim-mailer"
-path = "src/bin/main.rs"
-
 [build-dependencies]
 aes-gcm = "0.10.3"
 dotenv = "0.15.0"
