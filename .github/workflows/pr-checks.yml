@@ -7,4 +7,9 @@ on:
 jobs:
   build-and-test:
     uses: ./.github/workflows/build.yml
-    secrets: inherit
+    with:
+      release: false
+    secrets:
+      GMAIL_CLIENT_ID: FakeSecret1
+      GMAIL_CLIENT_SECRET: FakeSecret2
+      OUTLOOK_CLIENT_ID: FakeSecret3
