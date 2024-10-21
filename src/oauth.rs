@@ -277,4 +277,13 @@ mod tests {
     fn test_get_provider_config_unsupported() {
         get_provider_config("unsupported");
     }
+
+    #[test]
+    fn test_create_oauth_client() {
+        let gmail_client = create_oauth_client("gmail");
+        assert_eq!(gmail_client.client_id().as_str(), GMAIL_CLIENT_ID);
+
+        let outlook_client = create_oauth_client("outlook");
+        assert_eq!(outlook_client.client_id().as_str(), OUTLOOK_CLIENT_ID);
+    }
 }

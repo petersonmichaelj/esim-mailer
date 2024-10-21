@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+use crate::email::EmailTemplate;
 use crate::{get_or_refresh_token, send_email, Args};
 
 pub struct EsimMailerApp {
@@ -125,31 +126,12 @@ impl eframe::App for EsimMailerApp {
 
 impl EsimMailerApp {
     fn generate_preview(&mut self) {
-        let templates = crate::templates::load_templates();
+        let template = EmailTemplate::new();
 
-        if let Some(template) = templates.get("shared") {
-            let subject = crate::email::replace_placeholders(
-                template.subject,
-                &self.args.provider,
-                &self.args.name,
-                &self.args.data_amount,
-                &self.args.time_period,
-                &self.args.location,
-            );
+        let subject = template.subject(&self.args, 1); // Use 1 as a placeholder count
+        let body = template.body(&self.args);
 
-            let body = crate::email::replace_placeholders(
-                template.body,
-                &self.args.provider,
-                &self.args.name,
-                &self.args.data_amount,
-                &self.args.time_period,
-                &self.args.location,
-            );
-
-            self.email_preview = format!("Subject: {}\n\nBody:\n{}", subject, body);
-        } else {
-            self.email_preview = "Error: Shared template not found".to_string();
-        }
+        self.email_preview = format!("Subject: {}\n\nBody:\n{}", subject, body);
     }
 
     fn send_email_async(&self) {

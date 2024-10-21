@@ -1,5 +1,4 @@
 use crate::oauth::determine_provider;
-use crate::templates::load_templates;
 use crate::Args;
 use base64::{self, Engine};
 use lettre::message::header;
@@ -10,52 +9,50 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+pub struct EmailTemplate {
+    subject_template: &'static str,
+    body_template: &'static str,
+}
+
+impl EmailTemplate {
+    pub fn new() -> Self {
+        Self {
+            subject_template: "[{{provider}}] {{location}} eSIM",
+            body_template: include_str!("../templates/email_template.html"),
+        }
+    }
+
+    pub fn subject(&self, args: &Args, count: usize) -> String {
+        let subject = self
+            .subject_template
+            .replace("{{provider}}", &args.provider)
+            .replace("{{location}}", &args.location);
+        format!("{} - {}", subject, count)
+    }
+
+    pub fn body(&self, args: &Args) -> String {
+        self.body_template
+            .replace("{{provider}}", &args.provider)
+            .replace("{{name}}", &args.name)
+            .replace("{{data_amount}}", &args.data_amount)
+            .replace("{{time_period}}", &args.time_period)
+            .replace("{{location}}", &args.location)
+    }
+}
+
 pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -> io::Result<()> {
     let email_from = &args.email_from;
     let email_to = &args.email_to;
-    let name = &args.name;
-    let data_amount = &args.data_amount;
-    let time_period = &args.time_period;
-
-    // Load templates
-    let templates = load_templates();
 
     // Get template content
-    let template = match templates.get("shared") {
-        Some(content) => content,
-        None => {
-            eprintln!("Shared template not found");
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Shared template not found",
-            ));
-        }
-    };
+    let template = EmailTemplate::new();
 
     // Read image file
     let image_data = fs::read(image_path)?;
 
-    // Replace placeholders in the template subject and body
-    let subject = format!(
-        "{} - {}",
-        replace_placeholders(
-            template.subject,
-            &args.provider,
-            name,
-            data_amount,
-            time_period,
-            &args.location
-        ),
-        count
-    );
-    let body_content = replace_placeholders(
-        template.body,
-        &args.provider,
-        name,
-        data_amount,
-        time_period,
-        &args.location,
-    );
+    // Get subject and body content
+    let subject = template.subject(args, count);
+    let body_content = template.body(args);
     let body = format!(
         "<html><body>{}<br><img src='data:image/png;base64,{}'/></body></html>",
         body_content.replace("\n", "<br>"), // Replace newlines with <br> tags here
@@ -105,22 +102,6 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
     Ok(())
 }
 
-pub fn replace_placeholders(
-    content: &str,
-    provider: &str,
-    name: &str,
-    data_amount: &str,
-    time_period: &str,
-    location: &str,
-) -> String {
-    content
-        .replace("{{provider}}", provider)
-        .replace("{{name}}", name)
-        .replace("{{data_amount}}", data_amount)
-        .replace("{{time_period}}", time_period)
-        .replace("{{location}}", location)
-}
-
 fn configure_mailer(
     provider: &str,
     email_address: &str,
@@ -161,14 +142,41 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_replace_placeholders() {
-        let content = "Hello {{name}}, your {{provider}} eSIM for {{location}} includes {{data_amount}} for {{time_period}}.";
-        let result =
-            replace_placeholders(content, "TestProvider", "John", "5GB", "30 days", "Egypt");
-        assert_eq!(
-            result,
-            "Hello John, your TestProvider eSIM for Egypt includes 5GB for 30 days."
-        );
+    fn test_email_template_subject() {
+        let template = EmailTemplate::new();
+        let args = Args {
+            email_from: "sender@example.com".to_string(),
+            email_to: "recipient@example.com".to_string(),
+            bcc: None,
+            provider: "TestProvider".to_string(),
+            name: "John".to_string(),
+            data_amount: "5GB".to_string(),
+            time_period: "30 days".to_string(),
+            location: "Egypt".to_string(),
+        };
+        let result = template.subject(&args, 1);
+        assert_eq!(result, "[TestProvider] Egypt eSIM - 1");
+    }
+
+    #[test]
+    fn test_email_template_body() {
+        let template = EmailTemplate::new();
+        let args = Args {
+            email_from: "sender@example.com".to_string(),
+            email_to: "recipient@example.com".to_string(),
+            bcc: None,
+            provider: "TestProvider".to_string(),
+            name: "John".to_string(),
+            data_amount: "5GB".to_string(),
+            time_period: "30 days".to_string(),
+            location: "Egypt".to_string(),
+        };
+        let result = template.body(&args);
+        assert!(result.contains("John"));
+        assert!(result.contains("TestProvider"));
+        assert!(result.contains("5GB"));
+        assert!(result.contains("30 days"));
+        assert!(result.contains("Egypt"));
     }
 
     #[test]
