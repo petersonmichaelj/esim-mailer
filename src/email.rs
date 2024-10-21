@@ -1,5 +1,4 @@
 use crate::oauth::determine_provider;
-use crate::templates::load_templates;
 use crate::Args;
 use base64::{self, Engine};
 use lettre::message::header;
@@ -10,6 +9,18 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+pub struct EmailTemplate {
+    pub subject: &'static str,
+    pub body: &'static str,
+}
+
+pub fn get_template() -> EmailTemplate {
+    EmailTemplate {
+        subject: "[{{provider}}] {{location}} eSIM",
+        body: include_str!("../templates/email_template.html"),
+    }
+}
+
 pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -> io::Result<()> {
     let email_from = &args.email_from;
     let email_to = &args.email_to;
@@ -17,20 +28,8 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
     let data_amount = &args.data_amount;
     let time_period = &args.time_period;
 
-    // Load templates
-    let templates = load_templates();
-
     // Get template content
-    let template = match templates.get("shared") {
-        Some(content) => content,
-        None => {
-            eprintln!("Shared template not found");
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Shared template not found",
-            ));
-        }
-    };
+    let template = get_template();
 
     // Read image file
     let image_data = fs::read(image_path)?;
