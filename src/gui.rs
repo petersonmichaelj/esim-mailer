@@ -128,23 +128,8 @@ impl EsimMailerApp {
     fn generate_preview(&mut self) {
         let template = EmailTemplate::new();
 
-        let subject = crate::email::replace_placeholders(
-            template.subject,
-            &self.args.provider,
-            &self.args.name,
-            &self.args.data_amount,
-            &self.args.time_period,
-            &self.args.location,
-        );
-
-        let body = crate::email::replace_placeholders(
-            template.body,
-            &self.args.provider,
-            &self.args.name,
-            &self.args.data_amount,
-            &self.args.time_period,
-            &self.args.location,
-        );
+        let subject = template.subject(&self.args, 1); // Use 1 as a placeholder count
+        let body = template.body(&self.args);
 
         self.email_preview = format!("Subject: {}\n\nBody:\n{}", subject, body);
     }
