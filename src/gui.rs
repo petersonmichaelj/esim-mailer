@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::email::EmailTemplate;
+use crate::email::{self, EmailTemplate};
 use crate::{get_or_refresh_token, send_email, Args};
 
 pub struct EsimMailerApp {
@@ -142,10 +142,14 @@ impl EsimMailerApp {
         let args = self.args.clone();
         let image_paths = self.image_paths.clone();
 
-        thread::spawn(move || {
-            let provider = crate::oauth::determine_provider(&args.email_from);
+        // TODO: Ideally this would communicate an error to the user if they
+        // input an invalid email address, but it's not clear to how best to do
+        // that with egui yet.
+        let email_provider: email::Provider =
+            args.email_from.parse().expect("Invalid email provider");
 
-            match get_or_refresh_token(provider, &args.email_from) {
+        thread::spawn(
+            move || match get_or_refresh_token(&email_provider, &args.email_from) {
                 Ok(token) => {
                     for (index, path) in image_paths.iter().enumerate() {
                         match send_email(&args, token.clone(), path, index + 1) {
@@ -175,8 +179,8 @@ impl EsimMailerApp {
                     let mut sending_lock = is_sending.lock().unwrap();
                     *sending_lock = false;
                 }
-            }
-        });
+            },
+        );
     }
 }
 

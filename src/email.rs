@@ -1,13 +1,47 @@
-use crate::oauth::determine_provider;
 use crate::Args;
 use base64::{self, Engine};
 use lettre::message::header;
 use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::{Message, SmtpTransport, Transport};
 use std::error::Error;
+use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::str::FromStr;
+
+/// An error which can be returned when parsing a provider from an email address.
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[error("No supported email provider for '{0}'")]
+pub struct ParseProviderError(String);
+
+/// An email provider.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Provider {
+    Gmail,
+    Outlook,
+}
+
+impl FromStr for Provider {
+    type Err = ParseProviderError;
+
+    fn from_str(email: &str) -> Result<Self, Self::Err> {
+        match email.rsplit_once('@') {
+            Some((_, "gmail.com")) => Ok(Self::Gmail),
+            Some((_, "outlook.com" | "hotmail.com")) => Ok(Self::Outlook),
+            _ => Err(ParseProviderError(email.to_string())),
+        }
+    }
+}
+
+impl Display for Provider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Gmail => write!(f, "Gmail"),
+            Self::Outlook => write!(f, "Outlook"),
+        }
+    }
+}
 
 pub struct EmailTemplate {
     subject_template: &'static str,
@@ -85,8 +119,12 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
     let email = email_builder.body(body).unwrap();
 
     // Configure SMTP client with TLS
-    let provider = determine_provider(email_from);
-    let mailer = configure_mailer(provider, email_from, token)?;
+    let provider: Provider = email_from
+        .parse()
+        // TODO: Ideally this wouldn't get mapped to an io::Error, but right now
+        // the function signature requires it.
+        .map_err(|_| io::Error::other("Unsupported email provider"))?;
+    let mailer = configure_mailer(&provider, email_from, token)?;
 
     // Send the email
     match mailer.send(&email) {
@@ -103,12 +141,12 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
 }
 
 fn configure_mailer(
-    provider: &str,
+    provider: &Provider,
     email_address: &str,
     token: String,
 ) -> io::Result<SmtpTransport> {
     match provider {
-        "gmail" => Ok(SmtpTransport::relay("smtp.gmail.com")
+        Provider::Gmail => Ok(SmtpTransport::relay("smtp.gmail.com")
             .unwrap()
             .credentials(Credentials::new(email_address.to_string(), token))
             .authentication(vec![Mechanism::Xoauth2])
@@ -118,7 +156,7 @@ fn configure_mailer(
                     .unwrap(),
             ))
             .build()),
-        "outlook" => Ok(SmtpTransport::relay("smtp-mail.outlook.com")
+        Provider::Outlook => Ok(SmtpTransport::relay("smtp-mail.outlook.com")
             .unwrap()
             .credentials(Credentials::new(email_address.to_string(), token))
             .authentication(vec![Mechanism::Xoauth2])
@@ -130,10 +168,6 @@ fn configure_mailer(
                 .unwrap(),
             ))
             .build()),
-        _ => Err(io::Error::new(
-            io::ErrorKind::Unsupported,
-            "Unsupported email provider",
-        )),
     }
 }
 
@@ -180,20 +214,32 @@ mod tests {
     }
 
     #[test]
+    fn parse_valid_provider() {
+        let gmail = "foobar@gmail.com".parse::<Provider>();
+        assert_eq!(gmail, Ok(Provider::Gmail));
+
+        let outlook = "foobar@outlook.com".parse::<Provider>();
+        assert_eq!(outlook, Ok(Provider::Outlook));
+
+        let hotmail = "foobar@hotmail.com".parse::<Provider>();
+        assert_eq!(hotmail, Ok(Provider::Outlook));
+    }
+
+    #[test]
+    fn parse_invalid_provider() {
+        let result = "foobar@yahoo.com".parse::<Provider>();
+        assert_eq!(result, Err(ParseProviderError("foobar@yahoo.com".into())));
+    }
+
+    #[test]
     fn test_configure_mailer_gmail() {
-        let result = configure_mailer("gmail", "test@gmail.com", "token".to_string());
+        let result = configure_mailer(&Provider::Gmail, "test@gmail.com", "token".to_string());
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_configure_mailer_outlook() {
-        let result = configure_mailer("outlook", "test@outlook.com", "token".to_string());
+        let result = configure_mailer(&Provider::Outlook, "test@outlook.com", "token".to_string());
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_configure_mailer_unsupported() {
-        let result = configure_mailer("unsupported", "test@unsupported.com", "token".to_string());
-        assert!(result.is_err());
     }
 }
