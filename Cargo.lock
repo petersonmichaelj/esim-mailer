@@ -1213,6 +1213,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "thiserror",
  "url",
  "webbrowser",
  "winapi",

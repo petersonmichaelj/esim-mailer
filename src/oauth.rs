@@ -1,3 +1,4 @@
+use crate::email;
 use crate::embedded::{
     GMAIL_CLIENT_ID, GMAIL_SECRET, NONCE, OUTLOOK_CLIENT_ID, OUTLOOK_SECRET, SECRET_KEY,
 };
@@ -24,28 +25,19 @@ struct CachedToken {
     refresh_token: String,
 }
 
-pub fn determine_provider(email: &str) -> &'static str {
-    if email.ends_with("@gmail.com") {
-        "gmail"
-    } else if email.ends_with("@outlook.com") || email.ends_with("@hotmail.com") {
-        "outlook"
-    } else {
-        panic!("Unsupported email provider")
-    }
-}
-
 static REFRESH_TOKEN_CACHE: Lazy<Mutex<HashMap<String, String>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-pub fn get_or_refresh_token(provider: &str, email: &str) -> io::Result<String> {
+pub fn get_or_refresh_token(email_provider: &email::Provider, email: &str) -> io::Result<String> {
     let email_hash = format!("{:x}", Sha256::digest(email.as_bytes()));
-    let cache_key = format!("{}_{}", provider, email_hash);
+    let cache_key = format!("{}_{}", email_provider, email_hash);
 
     let mut cache = REFRESH_TOKEN_CACHE.lock().unwrap();
 
     if let Some(refresh_token) = cache.get(&cache_key) {
         // Try to refresh the token
-        if let Ok((access_token, new_refresh_token)) = refresh_oauth_token(provider, refresh_token)
+        if let Ok((access_token, new_refresh_token)) =
+            refresh_oauth_token(email_provider, refresh_token)
         {
             // Update the cached refresh token if it has changed
             if new_refresh_token != *refresh_token {
@@ -56,7 +48,7 @@ pub fn get_or_refresh_token(provider: &str, email: &str) -> io::Result<String> {
     }
 
     // If we couldn't refresh, perform a new OAuth flow
-    let (access_token, refresh_token) = perform_oauth(provider)?;
+    let (access_token, refresh_token) = perform_oauth(email_provider)?;
 
     // Cache the new refresh token
     cache.insert(cache_key, refresh_token);
@@ -64,9 +56,9 @@ pub fn get_or_refresh_token(provider: &str, email: &str) -> io::Result<String> {
     Ok(access_token)
 }
 
-pub fn perform_oauth(provider: &str) -> io::Result<(String, String)> {
-    let config = get_provider_config(provider);
-    let client = create_oauth_client(provider);
+pub fn perform_oauth(email_provider: &email::Provider) -> io::Result<(String, String)> {
+    let config = get_provider_config(email_provider);
+    let client = create_oauth_client(email_provider);
 
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -143,8 +135,11 @@ pub fn extract_code(request: &str) -> Option<String> {
         })
 }
 
-fn refresh_oauth_token(provider: &str, refresh_token: &str) -> io::Result<(String, String)> {
-    let client = create_oauth_client(provider);
+fn refresh_oauth_token(
+    email_provider: &email::Provider,
+    refresh_token: &str,
+) -> io::Result<(String, String)> {
+    let client = create_oauth_client(email_provider);
 
     let token_result = client
         .exchange_refresh_token(&RefreshToken::new(refresh_token.to_string()))
@@ -169,9 +164,9 @@ struct ProviderConfig {
     scope: &'static str,
 }
 
-fn get_provider_config(provider: &str) -> ProviderConfig {
-    match provider {
-        "gmail" => ProviderConfig {
+fn get_provider_config(email_provider: &email::Provider) -> ProviderConfig {
+    match email_provider {
+        email::Provider::Gmail => ProviderConfig {
             client_id: GMAIL_CLIENT_ID,
             encrypted_client_secret: if GMAIL_SECRET.is_empty() {
                 None
@@ -183,7 +178,7 @@ fn get_provider_config(provider: &str) -> ProviderConfig {
             redirect_uri: "http://localhost:9999",
             scope: "https://mail.google.com/",
         },
-        "outlook" => ProviderConfig {
+        email::Provider::Outlook => ProviderConfig {
             client_id: OUTLOOK_CLIENT_ID,
             encrypted_client_secret: if OUTLOOK_SECRET.is_empty() {
                 None
@@ -195,12 +190,11 @@ fn get_provider_config(provider: &str) -> ProviderConfig {
             redirect_uri: "http://localhost:9999",
             scope: "https://outlook.office.com/SMTP.Send offline_access",
         },
-        _ => panic!("Unsupported email provider"),
     }
 }
 
-fn create_oauth_client(provider: &str) -> BasicClient {
-    let config = get_provider_config(provider);
+fn create_oauth_client(email_provider: &email::Provider) -> BasicClient {
+    let config = get_provider_config(email_provider);
     let client_secret = config
         .encrypted_client_secret
         .map(|secret| decrypt_client_secret(secret));
@@ -234,19 +228,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_determine_provider() {
-        assert_eq!(determine_provider("test@gmail.com"), "gmail");
-        assert_eq!(determine_provider("test@outlook.com"), "outlook");
-        assert_eq!(determine_provider("test@hotmail.com"), "outlook");
-    }
-
-    #[test]
-    #[should_panic(expected = "Unsupported email provider")]
-    fn test_determine_provider_unsupported() {
-        determine_provider("test@unsupported.com");
-    }
-
-    #[test]
     fn test_extract_code() {
         let request = "GET /?code=test_code&state=test_state HTTP/1.1";
         assert_eq!(extract_code(request), Some("test_code".to_string()));
@@ -257,14 +238,14 @@ mod tests {
 
     #[test]
     fn test_get_provider_config() {
-        let gmail_config = get_provider_config("gmail");
+        let gmail_config = get_provider_config(&email::Provider::Gmail);
         assert_eq!(gmail_config.client_id, GMAIL_CLIENT_ID);
         assert_eq!(
             gmail_config.auth_url,
             "https://accounts.google.com/o/oauth2/v2/auth"
         );
 
-        let outlook_config = get_provider_config("outlook");
+        let outlook_config = get_provider_config(&email::Provider::Outlook);
         assert_eq!(outlook_config.client_id, OUTLOOK_CLIENT_ID);
         assert_eq!(
             outlook_config.auth_url,
@@ -273,17 +254,11 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Unsupported email provider")]
-    fn test_get_provider_config_unsupported() {
-        get_provider_config("unsupported");
-    }
-
-    #[test]
     fn test_create_oauth_client() {
-        let gmail_client = create_oauth_client("gmail");
+        let gmail_client = create_oauth_client(&email::Provider::Gmail);
         assert_eq!(gmail_client.client_id().as_str(), GMAIL_CLIENT_ID);
 
-        let outlook_client = create_oauth_client("outlook");
+        let outlook_client = create_oauth_client(&email::Provider::Outlook);
         assert_eq!(outlook_client.client_id().as_str(), OUTLOOK_CLIENT_ID);
     }
 }
