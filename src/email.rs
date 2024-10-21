@@ -1,6 +1,6 @@
-use crate::args::Args;
 use crate::oauth::determine_provider;
 use crate::templates::load_templates;
+use crate::Args;
 use base64::{self, Engine};
 use lettre::message::header;
 use lettre::transport::smtp::authentication::{Credentials, Mechanism};
