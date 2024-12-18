@@ -35,7 +35,7 @@ fn main() {
     let mut key = [0u8; 32];
     rand::thread_rng().fill(&mut key);
     let key = Key::<Aes256Gcm>::from_slice(&key);
-    let cipher = Aes256Gcm::new(&key);
+    let cipher = Aes256Gcm::new(key);
 
     let mut nonce = [0u8; 12];
     rand::thread_rng().fill(&mut nonce);
