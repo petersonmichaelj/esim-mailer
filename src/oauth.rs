@@ -5,10 +5,10 @@ use crate::embedded::{
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use oauth2::basic::BasicClient;
-use oauth2::reqwest::http_client;
+use oauth2::reqwest::blocking::Client as BlockingHttpClient;
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
-    RefreshToken, Scope, TokenResponse, TokenUrl,
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EndpointNotSet, EndpointSet,
+    PkceCodeChallenge, RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -110,7 +110,7 @@ pub fn perform_oauth(email_provider: &email::Provider) -> io::Result<(String, St
     let token = client
         .exchange_code(AuthorizationCode::new(code))
         .set_pkce_verifier(pkce_verifier)
-        .request(http_client)
+        .request(&BlockingHttpClient::new())
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let access_token = token.access_token().secret().clone();
@@ -143,7 +143,7 @@ fn refresh_oauth_token(
 
     let token_result = client
         .exchange_refresh_token(&RefreshToken::new(refresh_token.to_string()))
-        .request(http_client)
+        .request(&BlockingHttpClient::new())
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let access_token = token_result.access_token().secret().clone();
@@ -193,20 +193,22 @@ fn get_provider_config(email_provider: &email::Provider) -> ProviderConfig {
     }
 }
 
-fn create_oauth_client(email_provider: &email::Provider) -> BasicClient {
+fn create_oauth_client(
+    email_provider: &email::Provider,
+) -> BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet> {
     let config = get_provider_config(email_provider);
     let client_secret = config
         .encrypted_client_secret
         .map(|secret| decrypt_client_secret(secret));
 
-    let mut client = BasicClient::new(
-        ClientId::new(config.client_id.to_string()),
-        client_secret.map(ClientSecret::new),
-        AuthUrl::new(config.auth_url.to_string()).unwrap(),
-        Some(TokenUrl::new(config.token_url.to_string()).unwrap()),
-    );
+    let mut client = BasicClient::new(ClientId::new(config.client_id.to_string()))
+        .set_auth_uri(AuthUrl::new(config.auth_url.to_string()).unwrap())
+        .set_token_uri(TokenUrl::new(config.token_url.to_string()).unwrap())
+        .set_redirect_uri(RedirectUrl::new(config.redirect_uri.to_string()).unwrap());
 
-    client = client.set_redirect_uri(RedirectUrl::new(config.redirect_uri.to_string()).unwrap());
+    if let Some(secret) = client_secret.map(ClientSecret::new) {
+        client = client.set_client_secret(secret);
+    }
 
     client
 }
