@@ -139,6 +139,75 @@ impl EsimMailerApp {
             }
         });
     }
+
+    pub fn update_form_field(&mut self, field: &str, value: String) -> bool {
+        let mut changed = false;
+        match field {
+            "From" => {
+                if self.state.args.email_from != value {
+                    self.state.args.email_from = value;
+                    changed = true;
+                }
+            }
+            "To" => {
+                if self.state.args.email_to != value {
+                    self.state.args.email_to = value;
+                    changed = true;
+                }
+            }
+            "BCC" => {
+                if self.state.args.bcc.as_deref().unwrap_or("") != value {
+                    self.state.args.bcc = Some(value);
+                    changed = true;
+                }
+            }
+            "Provider" => {
+                if self.state.args.provider != value {
+                    self.state.args.provider = value;
+                    changed = true;
+                }
+            }
+            "Name" => {
+                if self.state.args.name != value {
+                    self.state.args.name = value;
+                    changed = true;
+                }
+            }
+            "Data Amount" => {
+                if self.state.args.data_amount != value {
+                    self.state.args.data_amount = value;
+                    changed = true;
+                }
+            }
+            "Time Period" => {
+                if self.state.args.time_period != value {
+                    self.state.args.time_period = value;
+                    changed = true;
+                }
+            }
+            "Location" => {
+                if self.state.args.location != value {
+                    self.state.args.location = value;
+                    changed = true;
+                }
+            }
+            _ => {}
+        }
+        if changed {
+            self.generate_preview();
+        }
+        changed
+    }
+
+    #[cfg(test)]
+    pub fn get_form_state(&self) -> Args {
+        self.state.args.clone()
+    }
+
+    #[cfg(test)]
+    pub fn get_preview(&self) -> String {
+        self.state.email_preview.clone()
+    }
 }
 
 impl eframe::App for EsimMailerApp {
@@ -148,32 +217,37 @@ impl eframe::App for EsimMailerApp {
                 ui.heading("eSIM Mailer");
                 ui.add_space(10.0);
 
-                let mut preview_changed = false;
-
                 egui::Grid::new("email_form")
                     .num_columns(1)
                     .spacing([0.0, 10.0])
                     .show(ui, |ui| {
-                        let Args {
-                            email_from,
-                            email_to,
-                            bcc,
-                            provider,
-                            name,
-                            data_amount,
-                            time_period,
-                            location,
-                        } = &mut self.state.args;
+                        let fields = [
+                            ("From", self.state.args.email_from.clone()),
+                            ("To", self.state.args.email_to.clone()),
+                            ("BCC", self.state.args.bcc.clone().unwrap_or_default()),
+                            ("Provider", self.state.args.provider.clone()),
+                            ("Name", self.state.args.name.clone()),
+                            ("Data Amount", self.state.args.data_amount.clone()),
+                            ("Time Period", self.state.args.time_period.clone()),
+                            ("Location", self.state.args.location.clone()),
+                        ];
 
-                        preview_changed |= add_form_field(ui, "From:", email_from);
-                        preview_changed |= add_form_field(ui, "To:", email_to);
-                        preview_changed |=
-                            add_form_field(ui, "BCC:", bcc.get_or_insert_with(String::new));
-                        preview_changed |= add_form_field(ui, "Provider:", provider);
-                        preview_changed |= add_form_field(ui, "Name:", name);
-                        preview_changed |= add_form_field(ui, "Data Amount:", data_amount);
-                        preview_changed |= add_form_field(ui, "Time Period:", time_period);
-                        preview_changed |= add_form_field(ui, "Location:", location);
+                        for (label, value) in fields.iter() {
+                            let mut current_value = value.clone();
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{}:", label));
+                                if ui
+                                    .add(
+                                        egui::TextEdit::singleline(&mut current_value)
+                                            .desired_width(f32::INFINITY),
+                                    )
+                                    .changed()
+                                {
+                                    self.update_form_field(label, current_value);
+                                }
+                            });
+                            ui.end_row();
+                        }
                     });
 
                 ui.add_space(10.0);
@@ -184,7 +258,6 @@ impl eframe::App for EsimMailerApp {
                         .pick_files()
                     {
                         self.state.image_paths = paths;
-                        preview_changed = true;
                     }
                 }
 
@@ -194,13 +267,6 @@ impl eframe::App for EsimMailerApp {
                 ));
 
                 ui.add_space(10.0);
-
-                if preview_changed {
-                    self.generate_preview();
-                    if let Ok(mut status_lock) = self.state.status.lock() {
-                        status_lock.clear();
-                    }
-                }
 
                 ui.group(|ui| {
                     ui.label("Email Preview:");
@@ -236,18 +302,6 @@ impl eframe::App for EsimMailerApp {
             });
         });
     }
-}
-
-fn add_form_field(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
-    let mut changed = false;
-    ui.horizontal(|ui| {
-        ui.label(label);
-        changed = ui
-            .add(egui::TextEdit::singleline(value).desired_width(f32::INFINITY))
-            .changed();
-    });
-    ui.end_row();
-    changed
 }
 
 #[cfg(test)]
@@ -372,5 +426,49 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         assert!(app.state.status.lock().unwrap().contains("Error"));
+    }
+
+    #[test]
+    fn test_form_field_updates() {
+        let email_ops = Arc::new(MockEmailOperations::new(false));
+        let mut app = EsimMailerApp::new_with_email_ops(email_ops);
+
+        // Test email from update
+        assert!(app.update_form_field("From", "test@example.com".to_string()));
+        assert_eq!(app.get_form_state().email_from, "test@example.com");
+
+        // Test no change when same value
+        assert!(!app.update_form_field("From", "test@example.com".to_string()));
+
+        // Test multiple field updates
+        assert!(app.update_form_field("To", "recipient@example.com".to_string()));
+        assert!(app.update_form_field("Name", "John Doe".to_string()));
+        assert!(app.update_form_field("Provider", "TestProvider".to_string()));
+
+        let state = app.get_form_state();
+        assert_eq!(state.email_to, "recipient@example.com");
+        assert_eq!(state.name, "John Doe");
+        assert_eq!(state.provider, "TestProvider");
+
+        // Verify preview is updated
+        let preview = app.get_preview();
+        assert!(preview.contains("John Doe"));
+        assert!(preview.contains("TestProvider"));
+    }
+
+    #[test]
+    fn test_bcc_field_update() {
+        let email_ops = Arc::new(MockEmailOperations::new(false));
+        let mut app = EsimMailerApp::new_with_email_ops(email_ops);
+
+        assert!(app.update_form_field("BCC", "bcc@example.com".to_string()));
+        assert_eq!(
+            app.get_form_state().bcc,
+            Some("bcc@example.com".to_string())
+        );
+
+        // Test empty BCC
+        assert!(app.update_form_field("BCC", "".to_string()));
+        assert_eq!(app.get_form_state().bcc, Some("".to_string()));
     }
 }
