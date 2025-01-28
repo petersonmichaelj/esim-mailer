@@ -128,16 +128,21 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
 
     // Send the email
     match mailer.send(&email) {
-        Ok(_) => println!("Email sent successfully!"),
+        Ok(_) => {
+            println!("Email sent successfully!");
+            Ok(())
+        }
         Err(e) => {
             eprintln!("Could not send email: {:?}", e);
             if let Some(source) = e.source() {
                 eprintln!("Error source: {:?}", source);
             }
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Could not send email: {}", e),
+            ))
         }
     }
-
-    Ok(())
 }
 
 fn configure_mailer(
@@ -241,5 +246,76 @@ mod tests {
     fn test_configure_mailer_outlook() {
         let result = configure_mailer(&Provider::Outlook, "test@outlook.com", "token".to_string());
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_provider_display() {
+        assert_eq!(Provider::Gmail.to_string(), "Gmail");
+        assert_eq!(Provider::Outlook.to_string(), "Outlook");
+    }
+
+    #[test]
+    fn test_send_email() -> io::Result<()> {
+        // Create a temporary test image
+        let temp_dir = std::env::temp_dir();
+        let image_path = temp_dir.join("test_image.png");
+        fs::write(&image_path, b"fake image data")?;
+
+        let args = Args {
+            email_from: "test@gmail.com".to_string(),
+            email_to: "recipient@example.com".to_string(),
+            bcc: Some("bcc@example.com".to_string()),
+            provider: "TestProvider".to_string(),
+            name: "Test User".to_string(),
+            data_amount: "1GB".to_string(),
+            time_period: "7 days".to_string(),
+            location: "TestLocation".to_string(),
+        };
+
+        // Test the function - it should fail when trying to send
+        let result = send_email(&args, "fake_token".to_string(), &image_path, 1);
+
+        // Clean up the temporary file
+        fs::remove_file(image_path)?;
+
+        // We expect an error from the SMTP client
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Could not send email"));
+        assert!(err
+            .to_string()
+            .contains("mechanism does not expect a challenge"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_send_email_invalid_provider() {
+        let args = Args {
+            email_from: "test@unsupported.com".to_string(),
+            email_to: "recipient@example.com".to_string(),
+            bcc: None,
+            provider: "TestProvider".to_string(),
+            name: "Test User".to_string(),
+            data_amount: "1GB".to_string(),
+            time_period: "7 days".to_string(),
+            location: "TestLocation".to_string(),
+        };
+
+        // Create a temporary test image first
+        let temp_dir = std::env::temp_dir();
+        let image_path = temp_dir.join("test_image2.png");
+        fs::write(&image_path, b"fake image data").unwrap();
+
+        let result = send_email(&args, "fake_token".to_string(), &image_path, 1);
+
+        // Clean up
+        fs::remove_file(image_path).unwrap();
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Unsupported email provider"));
     }
 }
