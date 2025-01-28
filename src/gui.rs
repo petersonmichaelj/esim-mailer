@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::email::{self, EmailTemplate};
-use crate::{get_or_refresh_token, send_email, Args};
+use crate::oauth::OAuthClient;
+use crate::{send_email, Args};
 
 pub struct EsimMailerApp {
     args: Args,
@@ -13,6 +14,7 @@ pub struct EsimMailerApp {
     status: Arc<Mutex<String>>,
     email_preview: String,
     is_sending: Arc<Mutex<bool>>,
+    oauth_client: Arc<Mutex<OAuthClient>>,
 }
 
 impl Default for EsimMailerApp {
@@ -23,6 +25,7 @@ impl Default for EsimMailerApp {
             status: Arc::new(Mutex::new(String::new())),
             email_preview: String::new(),
             is_sending: Arc::new(Mutex::new(false)),
+            oauth_client: Arc::new(Mutex::new(OAuthClient::default())),
         }
     }
 }
@@ -137,6 +140,7 @@ impl EsimMailerApp {
     fn send_email_async(&self) {
         let status = Arc::clone(&self.status);
         let is_sending = Arc::clone(&self.is_sending);
+        let oauth_client = Arc::clone(&self.oauth_client);
         *is_sending.lock().unwrap() = true;
 
         let args = self.args.clone();
@@ -148,8 +152,13 @@ impl EsimMailerApp {
         let email_provider: email::Provider =
             args.email_from.parse().expect("Invalid email provider");
 
-        thread::spawn(
-            move || match get_or_refresh_token(&email_provider, &args.email_from) {
+        thread::spawn(move || {
+            let token = {
+                let mut client = oauth_client.lock().unwrap();
+                client.get_or_refresh_token(&email_provider, &args.email_from)
+            };
+
+            match token {
                 Ok(token) => {
                     for (index, path) in image_paths.iter().enumerate() {
                         match send_email(&args, token.clone(), path, index + 1) {
@@ -179,8 +188,8 @@ impl EsimMailerApp {
                     let mut sending_lock = is_sending.lock().unwrap();
                     *sending_lock = false;
                 }
-            },
-        );
+            }
+        });
     }
 }
 

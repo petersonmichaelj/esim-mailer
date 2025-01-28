@@ -7,4 +7,4 @@ pub mod oauth;
 // Re-export commonly used items
 pub use args::Args;
 pub use email::send_email;
-pub use oauth::get_or_refresh_token;
+pub use oauth::OAuthClient;
