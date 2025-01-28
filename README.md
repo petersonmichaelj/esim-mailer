@@ -1,5 +1,7 @@
 # eSIM Mailer 📱💌
 
+[![codecov](https://codecov.io/github/petersonmichaelj/esim-mailer/graph/badge.svg?token=CMFC13CPUO)](https://codecov.io/github/petersonmichaelj/esim-mailer)
+
 eSIM Mailer is a cross-platform desktop application designed to simplify the process of sending eSIM activation details via email. It supports both Gmail and Outlook email providers and offers a user-friendly interface for composing and sending emails with eSIM QR codes.
 
 ## Why eSIM Mailer? 🤔
