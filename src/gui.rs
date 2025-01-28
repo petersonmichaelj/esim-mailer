@@ -444,31 +444,36 @@ mod tests {
         assert!(app.update_form_field("To", "recipient@example.com".to_string()));
         assert!(app.update_form_field("Name", "John Doe".to_string()));
         assert!(app.update_form_field("Provider", "TestProvider".to_string()));
+        assert!(app.update_form_field("Data Amount", "10GB".to_string()));
+        assert!(app.update_form_field("Time Period", "60 days".to_string()));
+        assert!(app.update_form_field("Location", "Japan".to_string()));
+        assert!(app.update_form_field("BCC", "bcc@example.com".to_string()));
 
         let state = app.get_form_state();
         assert_eq!(state.email_to, "recipient@example.com");
         assert_eq!(state.name, "John Doe");
         assert_eq!(state.provider, "TestProvider");
+        assert_eq!(state.data_amount, "10GB");
+        assert_eq!(state.time_period, "60 days");
+        assert_eq!(state.location, "Japan");
+        assert_eq!(state.bcc, Some("bcc@example.com".to_string()));
 
-        // Verify preview is updated
-        let preview = app.get_preview();
-        assert!(preview.contains("John Doe"));
-        assert!(preview.contains("TestProvider"));
-    }
-
-    #[test]
-    fn test_bcc_field_update() {
-        let email_ops = Arc::new(MockEmailOperations::new(false));
-        let mut app = EsimMailerApp::new_with_email_ops(email_ops);
-
-        assert!(app.update_form_field("BCC", "bcc@example.com".to_string()));
-        assert_eq!(
-            app.get_form_state().bcc,
-            Some("bcc@example.com".to_string())
-        );
+        // Test no change when setting same values again
+        assert!(!app.update_form_field("Data Amount", "10GB".to_string()));
+        assert!(!app.update_form_field("Time Period", "60 days".to_string()));
+        assert!(!app.update_form_field("Location", "Japan".to_string()));
+        assert!(!app.update_form_field("BCC", "bcc@example.com".to_string()));
 
         // Test empty BCC
         assert!(app.update_form_field("BCC", "".to_string()));
         assert_eq!(app.get_form_state().bcc, Some("".to_string()));
+
+        // Verify preview is updated with all fields
+        let preview = app.get_preview();
+        assert!(preview.contains("John Doe"));
+        assert!(preview.contains("TestProvider"));
+        assert!(preview.contains("10GB"));
+        assert!(preview.contains("60 days"));
+        assert!(preview.contains("Japan"));
     }
 }
