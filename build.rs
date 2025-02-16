@@ -33,12 +33,12 @@ fn main() {
     let outlook_client_id = env::var("OUTLOOK_CLIENT_ID").expect("OUTLOOK_CLIENT_ID must be set");
 
     let mut key = [0u8; 32];
-    rand::thread_rng().fill(&mut key);
+    rand::rng().fill(&mut key);
     let key = Key::<Aes256Gcm>::from_slice(&key);
     let cipher = Aes256Gcm::new(key);
 
     let mut nonce = [0u8; 12];
-    rand::thread_rng().fill(&mut nonce);
+    rand::rng().fill(&mut nonce);
     let nonce = Nonce::from_slice(&nonce);
 
     let out_dir = Path::new("src").join("embedded");
