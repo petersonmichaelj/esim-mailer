@@ -8,7 +8,7 @@ build = "build.rs"
 aes-gcm = "0.10.3"
 base64 = "0.22.1"
 eframe = "0.31.1"
-lettre = "0.11.14"
+lettre = "0.11.15"
 oauth2 = { version = "5.0", features = ["reqwest-blocking"] }
 once_cell = "1.21.1"
 rand = "0.9.0"
