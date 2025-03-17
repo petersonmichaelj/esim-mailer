@@ -18,7 +18,7 @@ serde_json = "1.0.140"
 sha2 = "0.10.8"
 thiserror = "2.0.12"
 url = "2.5.2"
-webbrowser = "1.0.3"
+webbrowser = "1.0.4"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winuser"] }
