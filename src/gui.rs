@@ -6,7 +6,7 @@ use std::thread;
 
 use crate::email::{self, EmailTemplate};
 use crate::oauth::OAuthClient;
-use crate::{send_email, Args};
+use crate::{Args, send_email};
 
 // Trait for email operations to allow mocking in tests
 pub trait EmailOperations: Send + Sync {
@@ -378,10 +378,11 @@ mod tests {
 
         app.generate_preview();
 
-        assert!(app
-            .state
-            .email_preview
-            .contains("Subject: [TestProvider] Egypt eSIM"));
+        assert!(
+            app.state
+                .email_preview
+                .contains("Subject: [TestProvider] Egypt eSIM")
+        );
         assert!(app.state.email_preview.contains("John"));
         assert!(app.state.email_preview.contains("5GB"));
         assert!(app.state.email_preview.contains("30 days"));
@@ -403,12 +404,13 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         assert_eq!(*mock_ops.send_count.lock().unwrap(), 1);
-        assert!(app
-            .state
-            .status
-            .lock()
-            .unwrap()
-            .contains("sent successfully"));
+        assert!(
+            app.state
+                .status
+                .lock()
+                .unwrap()
+                .contains("sent successfully")
+        );
     }
 
     #[test]
