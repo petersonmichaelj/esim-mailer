@@ -27,3 +27,6 @@ Thumbs.db
 
 gmail_*.json
 outlook_*.json
+
+# Cline memory bank
+memory-bank/
