@@ -1,6 +1,6 @@
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use rand::Rng;
 use std::env;
 use std::fs::File;

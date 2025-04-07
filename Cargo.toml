@@ -25,6 +25,6 @@ winapi = { version = "0.3", features = ["winuser"] }
 
 [build-dependencies]
 aes-gcm = "0.10.3"
-dotenv = "0.15.0"
+dotenvy = "0.15.7"
 rand = "0.9.0"
 winres = "0.1.12"
