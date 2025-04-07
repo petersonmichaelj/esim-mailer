@@ -360,7 +360,7 @@ mod tests {
         assert!(app.state.image_paths.is_empty());
         assert_eq!(app.state.status.lock().unwrap().as_str(), "");
         assert_eq!(app.state.email_preview, "");
-        assert_eq!(*app.state.is_sending.lock().unwrap(), false);
+        assert!(!(*app.state.is_sending.lock().unwrap()));
     }
 
     #[test]
