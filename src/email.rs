@@ -48,6 +48,12 @@ pub struct EmailTemplate {
     body_template: &'static str,
 }
 
+impl Default for EmailTemplate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EmailTemplate {
     pub fn new() -> Self {
         Self {
