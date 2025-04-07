@@ -1,7 +1,5 @@
 use crate::email;
-use crate::embedded::{
-    GMAIL_CLIENT_ID, GMAIL_SECRET, NONCE, OUTLOOK_CLIENT_ID, OUTLOOK_SECRET, SECRET_KEY,
-};
+use crate::embedded::{GMAIL_CLIENT_ID, GMAIL_SECRET, NONCE, OUTLOOK_CLIENT_ID, SECRET_KEY};
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use oauth2::basic::BasicClient;
@@ -239,11 +237,7 @@ fn get_provider_config(email_provider: &email::Provider) -> ProviderConfig {
     match email_provider {
         email::Provider::Gmail => ProviderConfig {
             client_id: GMAIL_CLIENT_ID,
-            encrypted_client_secret: if GMAIL_SECRET.is_empty() {
-                None
-            } else {
-                Some(GMAIL_SECRET)
-            },
+            encrypted_client_secret: Some(GMAIL_SECRET),
             auth_url: "https://accounts.google.com/o/oauth2/v2/auth",
             token_url: "https://oauth2.googleapis.com/token",
             redirect_uri: "http://localhost:9999",
@@ -251,11 +245,7 @@ fn get_provider_config(email_provider: &email::Provider) -> ProviderConfig {
         },
         email::Provider::Outlook => ProviderConfig {
             client_id: OUTLOOK_CLIENT_ID,
-            encrypted_client_secret: if OUTLOOK_SECRET.is_empty() {
-                None
-            } else {
-                Some(OUTLOOK_SECRET)
-            },
+            encrypted_client_secret: None, // Outlook doesn't require a client secret for PKCE flow
             auth_url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
             token_url: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
             redirect_uri: "http://localhost:9999",

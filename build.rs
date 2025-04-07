@@ -26,7 +26,6 @@ fn main() {
     embed_icon();
 
     let gmail_secret = env::var("GMAIL_CLIENT_SECRET").ok();
-    let outlook_secret = env::var("OUTLOOK_CLIENT_SECRET").ok();
 
     // Add these lines to get the client IDs
     let gmail_client_id = env::var("GMAIL_CLIENT_ID").expect("GMAIL_CLIENT_ID must be set");
@@ -50,12 +49,6 @@ fn main() {
         file.write_all(&encrypted_gmail).unwrap();
     }
 
-    let mut file = File::create(out_dir.join("encrypted_outlook_secret.bin")).unwrap();
-    if let Some(outlook_secret) = outlook_secret {
-        let encrypted_outlook = cipher.encrypt(nonce, outlook_secret.as_bytes()).unwrap();
-        file.write_all(&encrypted_outlook).unwrap();
-    }
-
     let mut file = File::create(out_dir.join("secret.key")).unwrap();
     file.write_all(key.as_slice()).unwrap();
 
@@ -70,7 +63,6 @@ fn main() {
     file.write_all(outlook_client_id.as_bytes()).unwrap();
 
     println!("cargo:rerun-if-env-changed=GMAIL_CLIENT_SECRET");
-    println!("cargo:rerun-if-env-changed=OUTLOOK_CLIENT_SECRET");
     println!("cargo:rerun-if-env-changed=GMAIL_CLIENT_ID");
     println!("cargo:rerun-if-env-changed=OUTLOOK_CLIENT_ID");
     println!("cargo:rerun-if-changed=.env");
