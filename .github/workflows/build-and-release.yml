@@ -44,15 +44,6 @@ jobs:
           name: ${{ matrix.os }}-${{ matrix.target }}
           path: target/${{ matrix.target }}/release
 
-      - name: Cache Homebrew packages
-        if: runner.os == 'macOS'
-        uses: actions/cache@v4
-        with:
-          path: ~/Library/Caches/Homebrew
-          key: ${{ runner.os }}-brew-imagemagick
-          restore-keys: |
-            ${{ runner.os }}-brew-
-
       - name: Install ImageMagick (macOS)
         if: runner.os == 'macOS'
         run: brew install imagemagick
