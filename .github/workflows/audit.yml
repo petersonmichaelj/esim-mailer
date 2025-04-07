@@ -14,8 +14,6 @@ on:
   schedule:
     # Run daily at midnight UTC
     - cron: "0 0 * * *"
-  # Allow manual triggering
-  workflow_dispatch:
 
 jobs:
   security_audit:
