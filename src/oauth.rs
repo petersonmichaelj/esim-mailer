@@ -268,9 +268,7 @@ fn create_oauth_client(
     email_provider: &email::Provider,
 ) -> BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet> {
     let config = get_provider_config(email_provider);
-    let client_secret = config
-        .encrypted_client_secret
-        .map(|secret| decrypt_client_secret(secret));
+    let client_secret = config.encrypted_client_secret.map(decrypt_client_secret);
 
     let mut client = BasicClient::new(ClientId::new(config.client_id.to_string()))
         .set_auth_uri(AuthUrl::new(config.auth_url.to_string()).unwrap())

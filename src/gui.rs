@@ -1,5 +1,6 @@
 use eframe::egui;
 use rfd::FileDialog;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -14,7 +15,7 @@ pub trait EmailOperations: Send + Sync {
         &self,
         args: &Args,
         token: String,
-        path: &PathBuf,
+        path: &Path,
         count: usize,
     ) -> std::io::Result<()>;
     fn get_token(
@@ -40,7 +41,7 @@ impl EmailOperations for DefaultEmailOperations {
         &self,
         args: &Args,
         token: String,
-        path: &PathBuf,
+        path: &Path,
         count: usize,
     ) -> std::io::Result<()> {
         send_email(args, token, path, count)
@@ -329,7 +330,7 @@ mod tests {
             &self,
             _args: &Args,
             _token: String,
-            _path: &PathBuf,
+            _path: &Path,
             _count: usize,
         ) -> std::io::Result<()> {
             if self.should_fail {
