@@ -35,8 +35,8 @@ jobs:
         with:
           components: clippy
 
-      - uses: taiki-e/install-action@clippy-sarif
-      - uses: taiki-e/install-action@sarif-fmt
+      - name: Install required cargo
+        run: cargo install clippy-sarif sarif-fmt
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
