@@ -26,6 +26,12 @@ eSIM Mailer was born from a desire to expedite the process of sending eSIMs via 
 2. Download the latest `esim-mailer-windows-x64.exe` file
 3. Double-click the downloaded file to run the application
 
+Note: When you first run the application, Windows SmartScreen may display a warning message saying "Windows protected your PC" because the app is not signed with a code signing certificate. This is normal for new or less common applications. To run the app:
+
+- Click on "More info"
+- Then click "Run anyway"
+- This warning appears because the application is new and not yet widely downloaded, not because it contains any malicious code
+
 ### macOS
 
 1. Go to the [Releases](https://github.com/petersonmichaelj/esim-mailer/releases) page
