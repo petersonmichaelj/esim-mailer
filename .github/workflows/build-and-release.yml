@@ -66,6 +66,7 @@ jobs:
           mkdir -p ESim-Mailer.app/Contents/MacOS
           mkdir -p ESim-Mailer.app/Contents/Resources
           cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ESim-Mailer.app/Contents/MacOS/
+          chmod +x ESim-Mailer.app/Contents/MacOS/${{ matrix.artifact_name }}
           VERSION=${GITHUB_REF#refs/tags/v}
           echo '<?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
