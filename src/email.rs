@@ -1,5 +1,4 @@
 use crate::Args;
-use base64::{self, Engine};
 use lettre::message::header;
 use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::{Message, SmtpTransport, Transport};
@@ -9,6 +8,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 use std::str::FromStr;
+use uuid;
 
 /// An error which can be returned when parsing a provider from an email address.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -92,14 +92,14 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
 
     // Get subject and body content
     let subject = template.subject(args, count);
-    let body_content = template.body(args);
-    let body = format!(
-        "<html><body>{}<br><img src='data:image/png;base64,{}'/></body></html>",
-        body_content.replace("\n", "<br>"), // Replace newlines with <br> tags here
-        base64::engine::general_purpose::STANDARD.encode(&image_data)
-    );
+    // Generate a unique Content-ID for the image
+    let content_id = format!("qr_image_cid@{}", uuid::Uuid::new_v4());
 
-    // Create email
+    // Get the body content and replace the QR_CID placeholder with the actual Content-ID
+    let body_content = template.body(args);
+    let body = body_content.replace("{{QR_CID}}", &content_id);
+
+    // Create multipart email with HTML body and image attachment
     let mut email_builder = Message::builder()
         .from(
             email_from
@@ -109,8 +109,7 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
         .to(email_to
             .parse()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?)
-        .subject(subject)
-        .header(header::ContentType::TEXT_HTML);
+        .subject(subject);
 
     // Add BCC if provided and not empty
     if let Some(bcc) = &args.bcc {
@@ -122,7 +121,21 @@ pub fn send_email(args: &Args, token: String, image_path: &Path, count: usize) -
         }
     }
 
-    let email = email_builder.body(body).unwrap();
+    // Build the email with multipart/related content
+    let email = email_builder
+        .multipart(
+            lettre::message::MultiPart::related()
+                .singlepart(
+                    lettre::message::SinglePart::builder()
+                        .header(header::ContentType::TEXT_HTML)
+                        .body(body),
+                )
+                .singlepart(
+                    lettre::message::Attachment::new_inline(content_id)
+                        .body(image_data, header::ContentType::parse("image/png").unwrap()),
+                ),
+        )
+        .unwrap();
 
     // Configure SMTP client with TLS
     let provider: Provider = email_from
