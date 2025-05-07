@@ -129,8 +129,8 @@ impl EsimMailerApp {
                                 break;
                             }
                         }
-                        *is_sending.lock().unwrap() = false;
                     }
+                    *is_sending.lock().unwrap() = false;
                 }
                 Err(e) => {
                     let mut status_lock = status.lock().unwrap();
