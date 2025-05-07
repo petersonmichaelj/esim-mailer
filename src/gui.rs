@@ -58,27 +58,42 @@ impl EmailOperations for DefaultEmailOperations {
 }
 
 // Separate state management
-#[derive(Default)]
+#[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct AppState {
     pub args: Args,
+
+    #[serde(skip)]
     pub image_paths: Vec<PathBuf>,
+
+    #[serde(skip)]
     pub status: Arc<Mutex<String>>,
+
+    #[serde(skip)]
     pub email_preview: String,
+
+    #[serde(skip)]
     pub is_sending: Arc<Mutex<bool>>,
 }
 
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct EsimMailerApp {
     state: AppState,
+
+    #[serde(skip)]
     email_ops: Arc<dyn EmailOperations>,
 }
 
 impl Default for EsimMailerApp {
     fn default() -> Self {
         let oauth_client = Arc::new(Mutex::new(OAuthClient::default()));
-        Self {
+
+        let mut app = Self {
             state: AppState::default(),
             email_ops: Arc::new(DefaultEmailOperations::new(oauth_client)),
-        }
+        };
+        app.generate_preview(); // Generate preview with loaded args
+        app
     }
 }
 
@@ -90,6 +105,25 @@ impl EsimMailerApp {
             state: AppState::default(),
             email_ops,
         }
+    }
+
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        // This is also where you can customize the look and feel of egui using
+        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+
+        // Load previous app state (if any).
+        // Note that you must enable the `persistence` feature for this to work.
+        if let Some(storage) = cc.storage {
+            let mut app: EsimMailerApp =
+                eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+            app.email_ops = Arc::new(DefaultEmailOperations::new(Arc::new(Mutex::new(
+                OAuthClient::default(),
+            ))));
+            app.generate_preview();
+            return app;
+        }
+
+        Default::default()
     }
 
     fn generate_preview(&mut self) {
@@ -303,6 +337,10 @@ impl eframe::App for EsimMailerApp {
             });
         });
     }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self)
+    }
 }
 
 #[cfg(test)]
@@ -359,7 +397,7 @@ mod tests {
         assert_eq!(app.state.args, Args::default());
         assert!(app.state.image_paths.is_empty());
         assert_eq!(app.state.status.lock().unwrap().as_str(), "");
-        assert_eq!(app.state.email_preview, "");
+        assert_ne!(app.state.email_preview, "");
         assert!(!(*app.state.is_sending.lock().unwrap()));
     }
 

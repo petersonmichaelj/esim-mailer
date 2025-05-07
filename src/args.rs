@@ -1,4 +1,4 @@
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Args {
     /// Email address of the sender
     pub email_from: String,

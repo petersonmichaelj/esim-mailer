@@ -13,6 +13,6 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "eSIM Mailer",
         options,
-        Box::new(|_cc| Ok(Box::new(EsimMailerApp::default()))),
+        Box::new(|cc| Ok(Box::new(EsimMailerApp::new(cc)))),
     )
 }
